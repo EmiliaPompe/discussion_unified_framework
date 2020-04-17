@@ -17,6 +17,8 @@ for (i in 1:2) M4[,i]=as.character(myRLDATA[,6+i])
 V=cbind(M1,M2,M3,M4)
 V=as.data.frame(V)
 d=ncol(V);
+n <- 20
+V <- V[1:n,]
 
 ALPHA=list()
 for (l in 1:d) ALPHA[[l]]=table(V[,l])/nrow(V)
@@ -26,9 +28,9 @@ for ( l in 1:d) {
   V[,l]=as.numeric(V[,l])
 }
 V=as.matrix(V)
-# V is a matrix of 500 * 14
+H <- ncol(V)
+# V is a matrix of n * 14
 # entries in column l takes values in 1:Vl (in the code the authors use h for l)
 
 MATCH=outer(myRLDATA$id, myRLDATA$id, FUN="==")
 MATCH=MATCH[upper.tri(MATCH)]
-
