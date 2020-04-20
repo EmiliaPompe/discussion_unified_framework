@@ -10,11 +10,11 @@ NumericMatrix computeNweights(double g,
 	int ksize1,
 	int ksize2,
 	int n) {
-	Rprintf("N1 = %i, N2 = %i, stepsize = %i \n", N1, N2, stepsize);
-	Rprintf("min(N1, N2) = (%i,%i) \n", std::min(N1,N2), std::max(N1,N2));
+	// Rprintf("N1 = %i, N2 = %i, stepsize = %i \n", N1, N2, stepsize);
+	// Rprintf("min(N1, N2) = (%i,%i) \n", std::min(N1,N2), std::max(N1,N2));
 	int lbd = std::max(std::min(ksize1, ksize2), std::min(N1 - stepsize, N2 - stepsize));
 	int ubd = std::max(N1, N2) + stepsize;
-	Rprintf("we consider values of N in [%i,%i] \n", lbd, ubd);
+	// Rprintf("we consider values of N in [%i,%i] \n", lbd, ubd);
 	NumericMatrix w(3, ubd - lbd + 1);
 	for (int i = 0; i < w.ncol() ; i++){
 	  int m = lbd + i ;
@@ -23,8 +23,8 @@ NumericMatrix computeNweights(double g,
 	    double lcombo = 0;
 	    for (int xx = m ; xx > m - ksize1; xx--){
 	      lcombo += log(xx);
-	      w(1,i) = lcombo + (n + g) * log(m);
 	    }
+	    w(1,i) = lcombo - (n + g) * log(m);
 	  }else{
 	    w(1,i) = R_NegInf;
 	  }
@@ -32,12 +32,12 @@ NumericMatrix computeNweights(double g,
 	    double lcombo = 0;
 	    for (int xx = m ; xx > m - ksize2; xx--){
 	      lcombo += log(xx);
-	      w(2,i) = lcombo + (n + g) * log(m);
 	    }
+	    w(2,i) = lcombo - (n + g) * log(m);
 	  }else{
 	    w(2,i) = R_NegInf;
 	  }
-	  Rprintf("population size N = %i, logweights1  = %f , logweights2 = %f, \n", m, w(1,i), w(2,i));
+	  // Rprintf("population size N = %i, logweights1  = %f , logweights2 = %f, \n", m, w(1,i), w(2,i));
 	}
 	// normalize the weights
 	double maxlogweights = max(w(1,_));

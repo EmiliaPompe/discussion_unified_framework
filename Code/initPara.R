@@ -1,5 +1,5 @@
 ## initialize parmeters 
-nMCMC <- 1000
+nMCMC <- 2000
 ## data size 
 n=as.integer(nrow(V))
 ## number of fields
@@ -20,19 +20,26 @@ a <- matrix(0.01, nrow = n, ncol = H)
 ## hyperparameter for prior on N 
 g <- 1.02
 ## initial population size 
-N1 <- 250
+N1 <- 2500
+
+
+# find another set of parameters for the coupled gibbs 
+lambda1 <- lambda 
+lambda2 <- sample(n, size = n, replace = T)
+N1 <- N1
+N2 <- N1 + 10 
 
 ## used to get the ratio
-pcluster_M <- prob_M <- matrix(NA, nrow = n, ncol = H)
-## before mcmc
-clsize <- rep(0, n)
-for( l in 1:n){
-  clsize[lambda[l] ] <- clsize[lambda[l] ] + 1
-}
-ksize <- 0 
-ksize <- sum(clsize > 0) ## clsize == table(lambda) and ksize = length(clsize)
-psamp <- double(n);
-N <- N1 
+# pcluster_M <- prob_M <- matrix(NA, nrow = n, ncol = H)
+# ## before mcmc
+# clsize <- rep(0, n)
+# for( l in 1:n){
+#   clsize[lambda[l] ] <- clsize[lambda[l] ] + 1
+# }
+# ksize <- 0 
+# ksize <- sum(clsize > 0) ## clsize == table(lambda) and ksize = length(clsize)
+# psamp <- double(n);
+# N <- N1 
 
 
 ### copy and pasted from .c file, will need these later
