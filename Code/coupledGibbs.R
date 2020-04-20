@@ -15,6 +15,7 @@ source("coupleLambda.R")
 source("coupleN.R")
 
 stepsize <- 1000
+nMCMC <- 10000
 
 coupleGibbs <- function(nMCMC, lambda1, lambda2, N1, N2, g, p, a, n){
   meetTime <- Inf
@@ -24,7 +25,7 @@ coupleGibbs <- function(nMCMC, lambda1, lambda2, N1, N2, g, p, a, n){
   for (iter in 1:nMCMC){
     ## update lambda 
     for (j in 1:n){
-      lambdajs <- coupleLambdaJ(j, lambda1, lambda2, p1 = p, p2 = p, a1 = a, a2 = a, N1 = N1, N2 = N2)
+      lambdajs <- coupleLambda(j, lambda1, lambda2, p1 = p, p2 = p, a1 = a, a2 = a, N1 = N1, N2 = N2)
       # if(lambdajs[1] == lambdajs[2]){
       #   print(cat("for j = ", j ," coupled lambda-j = ", lambdajs[1]))
       # }
