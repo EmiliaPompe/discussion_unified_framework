@@ -32,7 +32,7 @@ for (j in 1:n){
             prob_M[q,h] <- prob_M[q,h]*( (V[i,h] == V[j,h])*(1 - a[q,h]) + a[q,h] * p[cumdime[h]+V[i,h]] );
           }
         }
-        prob_M[q,h] <- a[q,h]*p[cumdime[h] + V[j,h]] + (1 - a[q,h]) * prob_M[q,h] / pcluster_M[q,h];
+        prob_M[q,h] <- a[q,h]*p[cumdime[h] + V[j,h]] + (1 - a[q,h]) * p[cumdime[h] + V[j,h]] * prob_M[q,h] / pcluster_M[q,h];
         psamp[q] <- psamp[q]*prob_M[q,h];
         if(is.na(psamp[q])) print(c(j,q,h,k,i))
       }
