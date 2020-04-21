@@ -28,6 +28,8 @@ lambda1 <- lambda
 lambda2 <- sample(n, size = n, replace = T)
 N1 <- N1
 N2 <- N1 + 10 
+a1 <- matrix(0.01, nrow = n, ncol = H)
+a2 <- matrix(0.01, nrow = n, ncol = H)
 
 ## used to get the ratio
 # pcluster_M <- prob_M <- matrix(NA, nrow = n, ncol = H)
