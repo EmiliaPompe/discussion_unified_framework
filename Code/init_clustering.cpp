@@ -43,7 +43,7 @@ List init_clustering(const IntegerVector & lambda) {
 // a is alpha prime in the paper and given in a matrix with n row, one for each cluster, and ncol(V) columns
 
 // [[Rcpp::export]]
-NumericVector compute_loglikelihood_clusters(const List & clustering,
+NumericMatrix compute_loglikelihood_clusters(const List & clustering,
                                            const NumericVector & p,
                                            const IntegerMatrix & V,
                                            const IntegerVector & dimV,
