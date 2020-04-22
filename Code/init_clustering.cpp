@@ -73,7 +73,7 @@ NumericMatrix compute_loglikelihood_clusters(const List & clustering,
       std::fill(cl_likelihood_field.begin(), cl_likelihood_field.end(), 0.0);
       // compute likelihood recursively over members of cluster
       // first member (associated row in V)
-      int j = clmembers[icluster,0];
+      int j = clmembers(icluster,0);
       for (int l = 0; l < H; l++){
         // recall p[cumdime[l] + V(j,l)] is theta_{l, v(j,l)} in the paper
         cl_likelihood_field(l) += log(p[cumdime[l] + V(j,l)]);
@@ -83,7 +83,7 @@ NumericMatrix compute_loglikelihood_clusters(const List & clustering,
         // loop over remaining members
         for (int imember = 1; imember < clsize[icluster]; imember++){
           // original index of that member (i.e. corresponding row in V)
-          int q = clmembers[icluster,imember];
+          int q = clmembers(icluster,imember);
           double logprod = 0.;
           // loop over fields 
           for (int l = 0; l < H; l++){
@@ -92,7 +92,7 @@ NumericMatrix compute_loglikelihood_clusters(const List & clustering,
             cl_likelihood_field(l) += log(a(q,l) * p[cumdime[l] + V(q,l)]);
             // next, implement second part of recursion
             for (int othermember = 0; othermember < imember; othermember ++){
-              int qprime = clmembers[icluster,othermember];
+              int qprime = clmembers(icluster,othermember);
               logprod += log((1 - a(q,l)) * (V(q,l) == V(qprime,l)) + a(q,l) * p[cumdime[l] + V(qprime,l)]);
             }
             logprod += log((1 - a(q,l)) * p[cumdime[l] + V(q,l)]);
