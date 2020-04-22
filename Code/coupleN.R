@@ -17,7 +17,7 @@
 # n <- 4
 coupleN <- function(N1, N2, k1,k2, g, n){
   w <- computeNweights(g = g, N1 =N1, N2  = N2, stepsize = stepsize, ksize1 = k1,ksize2 = k2, n = n)
-  index <- coupleMultinomial(p = w[2,],q = w[3,], n = dim(w)[2])
+  index <- couple_multinomial_alt(p = w[2,],q = w[3,], n = dim(w)[2])
   return(as.integer(w[1,index]))
 }
 
