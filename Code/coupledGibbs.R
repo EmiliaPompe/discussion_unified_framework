@@ -11,21 +11,20 @@ source("initPara.R")
 # source("coupleMultinomial.R")
 library(Rcpp)
 sourceCpp("computeNweights.cpp")
-sourceCpp("computeQcpp.cpp")
+# sourceCpp("computeQcpp.cpp")
+sourceCpp("init_clustering.cpp")
+sourceCpp("compute_psampq.cpp")
 source("coupleLambda.R")
 source("couple_multinomial_alt.R")
 source("coupleN.R")
 source("relabel.R")
 
-stepsize <- 1000
-nMCMC <- 10000
-nBurn <- 5000
-nRepeats <- 1000
-# nMCMC <- 10
 
 coupleGibbs <- function(nMCMC, N1, N2, g, p, a1, a2, n, earlyStop = TRUE){
   lambda1 <- sample(n, size = n, replace = T)
   lambda2 <- sample(n, size = n, replace = T)
+  lambda1 <- relabel(lambda1)$lambda
+  lambda2 <- relabel(lambda2)$lambda
   meetTime <- Inf
   N1_chain <- N2_chain <- rep(0, nMCMC)
   k1_chain <- k2_chain <- rep(0, nMCMC)
@@ -33,25 +32,26 @@ coupleGibbs <- function(nMCMC, N1, N2, g, p, a1, a2, n, earlyStop = TRUE){
   percentageCoupled <- rep(0, nMCMC)
   w_upper <- rep(0,nMCMC)
   L <- 1
-  ### run one iteration for the chain lambda1, N1 and a1
-  iter <- 1 
-  for (j in 1:n){
-    lambdajs <- coupleLambda(j, lambda1, lambda2, p1 = p, p2 = p, a1 = a1, a2 = a2, N1 = N1, N2 = N2)
-    lambda1[j] <- lambdajs[1]
+  ### run L iterations for the chain lambda1, N1 and a1
+  for (iter in 1:L){
+    for (j in 1:n){
+      lambdajs <- coupleLambda(j, lambda1, lambda2, p1 = p, p2 = p, a1 = a1, a2 = a2, N1 = N1, N2 = N2)
+      lambda1[j] <- lambdajs[1]
+    }
+    relabel1 <- relabel(lambda1)
+    lambda1 <- relabel1$lambda
+    a1 <- a1[relabel1$iis,]
+    ksize1 <- length(unique(lambda1))
+    Ns <- coupleN(N1 = N1, N2 = N2, k1 = ksize1, k2 = ksize1, g, n)
+    N1 <- Ns[1]
+    ### store 
+    k1_chain[iter] <- ksize1
+    N1_chain[iter] <- N1
+    lambda1_chain[, iter] <- lambda1
   }
-  relabel1 <- relabel(lambda1)
-  lambda1 <- relabel1$lambda
-  a1 <- a1[relabel1$iis,]
-  ksize1 <- length(unique(lambda1))
-  Ns <- coupleN(N1 = N1, N2 = N2, k1 = ksize1, k2 = ksize1, g, n)
-  N1 <- Ns[1]
-  ### store 
-  k1_chain[iter] <- ksize1
-  N1_chain[iter] <- N1
-  lambda1_chain[, iter] <- lambda1
-  ### try to couple the chains with lag 1
-  iter <- 2
-  for (iter in 2:nMCMC){
+  ### try to couple the chains with lag L
+  iter <- L
+  for (iter in (L + 1):nMCMC){
     ## update lambda 
     for (j in 1:n){
       lambdajs <- coupleLambda(j, lambda1, lambda2, p1 = p, p2 = p, a1 = a1, a2 = a2, N1 = N1, N2 = N2)
@@ -62,7 +62,7 @@ coupleGibbs <- function(nMCMC, N1, N2, g, p, a1, a2, n, earlyStop = TRUE){
       lambda2[j] <- lambdajs[2]
     }
     percentageCoupled[iter] <- mean(lambda1 == lambda2)
-    ## relabel lambd1 and lambda2 and change a1 a2 accordingly
+    # ## relabel lambd1 and lambda2 and change a1 a2 accordingly
     relabel1 <- relabel(lambda1)
     lambda1 <- relabel1$lambda
     a1 <- a1[relabel1$iis,]
@@ -74,10 +74,18 @@ coupleGibbs <- function(nMCMC, N1, N2, g, p, a1, a2, n, earlyStop = TRUE){
     if (iter %% (nMCMC / 50) == 0 ){
       print(paste('iteration', iter, percentageCoupled[iter] * 100, "percent coupled",sep = ' '))
     }
+    # partition1 <- init_clustering(lambda1 - 1)
+    # partition2 <- init_clustering(lambda2 - 1)
     ksize1 <- length(unique(lambda1))
     ksize2 <- length(unique(lambda2))
     k1_chain[iter] <- ksize1
     k2_chain[iter - L] <- ksize2
+    ## update alpha 
+    
+    ## update theta
+    # for (l in 1:H){
+    #   
+    # }
     ## update N 
     Ns <- coupleN(N1 = N1, N2 = N2, k1 = ksize1, k2 = ksize2, g, n)
     N1 <- Ns[1]
@@ -103,7 +111,7 @@ coupleGibbs <- function(nMCMC, N1, N2, g, p, a1, a2, n, earlyStop = TRUE){
               L = L, w_upper = w_upper))
 }
 
-# result <- coupleGibbs(nMCMC, N1, N2, g, p, a1, a2,n, earlyStop = FALSE)
+result <- coupleGibbs(nMCMC, N1, N2, g, p, a1, a2,n, earlyStop = FALSE)
 # print(result$meetTime)
 # print(which(result$N1_chain != result$N2_chain))
 # 
@@ -168,10 +176,10 @@ getCouplingTime <- function(nRepeats = 1000){
   wUpper <- matrix(data = 0, nrow = nRepeats, ncol = nMCMC)
   for (i in 1:nRepeats){
     result <- coupleGibbs(nMCMC, N1, N2, g, p, a1, a2,n, earlyStop = TRUE)
-    mTimes[i] <- result$meetTime
+    mTimes[i] <- min(nMCMC, result$meetTime)
     ## this is equation 4 in Biswas et al. 2019
-    for (t in 1 : (result$meetTime - 1 - result$L)){
-      wUpper[i, t] <- sum(result$w_upper[1: (result$meetTime - result$L - t)])
+    for (t in 1 : (mTimes[i] - 1 - result$L)){
+      wUpper[i, t] <- sum(result$w_upper[1: (mTimes[i] - result$L - t)])
     }
   }
   return(list(meeting_times = mTimes,
@@ -188,30 +196,33 @@ print(table(repeatCoupling$meeting_times))
 
 ## process the tv_upper bounds 
 max_meeting <- max(repeatCoupling$meeting_times)
-ts <- c(1: (2 + max_meeting))
-tv_upper <- rep(NA, 1 + max_meeting)
+ts <- c(1: min(nMCMC, (2 + max_meeting)))
+tv_upper <- rep(NA, length(ts))
 for (t in ts){
-  tv_upper[t] <- mean( pmax(0, repeatCoupling$meeting_times - t))
+  tv_upper[t ] <- mean( pmax(0, repeatCoupling$meeting_times - t))
 }
-
-plot(ts, tv_upper, main = '', type = 'l',
-     xlab = 'iteration',
-     ylab = 'upper bound d_TV')
-
-w_upper <- repeatCoupling$wUpper
-plot(ts, colMeans(w_upper[,1: (2 + max_meeting)]),
-     xlab = 'iteration',
-     ylab = 'upper bound d_W',
-     type = 'l')
-
-
-pdf("distance.pdf", width = 6, height = 4)
 par(mfrow = c(1,2), mar = c(4,4,1,1))
 plot(ts, tv_upper, main = '', type = 'l',
      xlab = 'iteration',
+     ylab = 'upper bound d_TV',
+     log = 'x')
+abline(h = 1,col = 'red')
+w_upper <- repeatCoupling$wUpper
+plot(colMeans(w_upper[,ts]),
+     xlab = paste('iteration, lag =', L, sep = ' '),
+     ylab = 'upper bound d_W',
+     type = 'l')
+
+pdf("distance.pdf", width = 6, height = 4)
+par(mfrow = c(1,3), mar = c(4,4,1,1))
+title <- paste( "histogram of coupling time, with", nRepeats, "repeats", sep = " ")
+hist(repeatCoupling$meeting_times, main = title, xlab = 'meetimg times')
+plot(ts, tv_upper, main = '', type = 'l',
+     xlab = paste('iteration, lag =', L, sep = ' '),
      ylab = 'upper bound d_TV')
-plot(ts, colMeans(w_upper[,1: (2 + max_meeting)]),
-     xlab = 'iteration',
+abline(h = 1,col = 'red')
+plot(ts, colMeans(w_upper[,ts]),
+     xlab = paste('iteration, lag =', L, sep = ' '),
      ylab = 'upper bound d_W',
      type = 'l')
 dev.off()
