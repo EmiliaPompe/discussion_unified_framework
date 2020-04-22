@@ -62,7 +62,7 @@ NumericMatrix compute_loglikelihood_clusters(const List & clustering,
   }  
   //  
   NumericMatrix clusterloglikelihoods(n, H);
-  std::fill(clusterloglikelihoods.begin(), clusterloglikelihoods.end(), 0.0);
+  std::fill(clusterloglikelihoods.begin(), clusterloglikelihoods.end(), R_NegInf);
   // loop over non-empty clusters and compute associated likelihoods
   for (int icluster = 0; icluster < n; icluster ++){
     // if empty cluster, do nothing
@@ -89,13 +89,13 @@ NumericMatrix compute_loglikelihood_clusters(const List & clustering,
           for (int l = 0; l < H; l++){
             // to implement first part of recursion
             // multiply by associated alpha' * V(q,l)
-            cl_likelihood_field(l) += log(a(q,l) * p[cumdime[l] + V(q,l)]);
+            cl_likelihood_field(l) += log(a(icluster,l) * p[cumdime[l] + V(q,l)]);
             // next, implement second part of recursion
             for (int othermember = 0; othermember < imember; othermember ++){
               int qprime = clmembers(icluster,othermember);
-              logprod += log((1 - a(q,l)) * (V(q,l) == V(qprime,l)) + a(q,l) * p[cumdime[l] + V(qprime,l)]);
+              logprod += log((1 - a(icluster,l)) * (V(q,l) == V(qprime,l)) + a(icluster,l) * p[cumdime[l] + V(qprime,l)]);
             }
-            logprod += log((1 - a(q,l)) * p[cumdime[l] + V(q,l)]);
+            logprod += log((1 - a(icluster,l)) * p[cumdime[l] + V(q,l)]);
             // next we need to define exp(logprod) + exp(cl_likelihood_field(l))
             double max_logs = std::max(logprod, cl_likelihood_field(l));
             cl_likelihood_field(l) = max_logs + log(exp(logprod - max_logs) + exp(cl_likelihood_field(l) - max_logs));
@@ -110,114 +110,3 @@ NumericMatrix compute_loglikelihood_clusters(const List & clustering,
   return clusterloglikelihoods;
 }
 
-// psampq is the ratio of include j vs exclude j
-//    for (int l = 0 ; l < H; l ++){
-//      probM[ l ] = 1.0;
-//      pclusterM[ l ] = 1.0;
-//      cumprod[ l ] = 1.0;
-//    }
-// pclusterM is the probability of excluding j in q
-// probM is the probability of including j in q
-//    bool firstElement = true;
-//    for (int i = 0; i < n ; i++){
-//      if (lambda[i] == q && j != i){
-//        if (firstElement){
-//          firstElement = false;
-//          for (int l = 0; l < H; l++){
-//            pclusterM[l] = p[cumdime[l] + V(j,l)];
-//          }
-/*        }else{
- for(int k = 0; k < i; k++){
- // for all the inspected record 
- if (lambda[k] == q && k != j){
- for(int l = 0 ; l < H; l++ ){
- cumprod[l] *= (1 - a(q,l)) * (V(k,l)== V(k,l)) + a(q,l) * p[cumdime[l] + V(i,l)];
- pclusterM[l] = pclusterM[l] * a(q,l) * p[cumdime[l] + V(i,l)]+ (1 - a(q,l)) * p[cumdime[l] + V(i,l)] * cumprod[l];	
- }
- }
- }
-}
- for (int l = 0; l < H; l++){
- probM[l] *= (1 - a(q,l)) * (V(i,l) == V(j,l)) + a(q,l) * p[cumdime[l] + V(i,l)];
- }
-}
-}
- for (int l = 0; l < H; l++){
- probM[l] = p[cumdime[l] + V(j,l)] * ( a(q,l) + (1 - a(q,l)) * probM[l] / pclusterM[l]);
- }
- psampq[q] = 1.0;
- for (int l = 0; l < H; l++){
- psampq[q] *= probM[l];
- }
- }
- }
- 
- return clusterlikelihoods;
- }
- */
-
-/*  
- for (int q = 0; q < n; q++){
- // first see if q is a new cluster
- if (clsize[q] == 0){
- for (int l = 0; l < H; l++){
- psampq[q] *= p[cumdime[l]+ V(j,l)]; 
- }
- psampq[q] = psampq[q] * (N - ksize) / (n - ksize);
- }
- else{
- // if q is an observed cluster 
- // psampq is the ratio of include j vs exclude j
- for (int l = 0 ; l < H; l ++){
- probM[ l ] = 1.0;
- pclusterM[ l ] = 1.0;
- cumprod[ l ] = 1.0;
- }
- // pclusterM is the probability of excluding j in q
- // probM is the probability of including j in q
- bool firstElement = true;
- for (int i = 0; i < n ; i++){
- if (lambda[i] == q && j != i){
- if (firstElement){
- firstElement = false;
- for (int l = 0; l < H; l++){
- pclusterM[l] = p[cumdime[l] + V(j,l)];
- }
- }else{
- for(int k = 0; k < i; k++){
- // for all the inspected record 
- if (lambda[k] == q && k != j){
- for(int l = 0 ; l < H; l++ ){
- cumprod[l] *= (1 - a(q,l)) * (V(k,l)== V(k,l)) + a(q,l) * p[cumdime[l] + V(i,l)];
- pclusterM[l] = pclusterM[l] * a(q,l) * p[cumdime[l] + V(i,l)]+ (1 - a(q,l)) * p[cumdime[l] + V(i,l)] * cumprod[l];	
- }
- }
- }
- }
- for (int l = 0; l < H; l++){
- probM[l] *= (1 - a(q,l)) * (V(i,l) == V(j,l)) + a(q,l) * p[cumdime[l] + V(i,l)];
- }
- }
- }
- for (int l = 0; l < H; l++){
- probM[l] = p[cumdime[l] + V(j,l)] * ( a(q,l) + (1 - a(q,l)) * probM[l] / pclusterM[l]);
- }
- psampq[q] = 1.0;
- for (int l = 0; l < H; l++){
- psampq[q] *= probM[l];
- }
- }
- }
- 
- // normalize psampq
- double sumpsampq = 0; 
- for (int q = 0; q < n ; q++){
- sumpsampq += psampq[q];
- }
- for (int q = 0; q < n ; q++){
- psampq[q] = psampq[q] / sumpsampq;
- }
- return clustering;
- }
- 
- */

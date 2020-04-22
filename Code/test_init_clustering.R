@@ -10,6 +10,7 @@ library(Rcpp)
 # source("couple_multinomial_alt.R")
 # source("coupleN.R")
 # source("relabel.R")
+sourceCpp("init_clustering.cpp")
 
 ## work with smaller data
 V <- V[1:10,1:4]
@@ -31,25 +32,10 @@ g <- 1.02
 N <- 50
 ## lambda is eta  in the paper
 lambda <- sample(n, size = n, replace = T) 
-
-## compute clustering
-clustering <- list()
-## size of each cluster
-clustering$clsize <- rep(0, n)
-## number of blocks
-clustering$ksize <- 0
-##
-
-sourceCpp("init_clustering.cpp")
 print(lambda)
 clustering <- init_clustering(lambda-1)
-clustering
+clustering$clsize
 
-compute_loglikelihood_clusters(clustering,
-                            p,
-                            V,
-                            dimV, 
-                            a
-)
+compute_loglikelihood_clusters(clustering, p, V, dimV, a)
 
 
