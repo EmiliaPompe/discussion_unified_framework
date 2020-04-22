@@ -65,7 +65,7 @@ NumericVector computeQcpp(int j,
 	  						// for all the inspected record 
 	  						if (lambda[k] == q && k != j){
 	  							for(int l = 0 ; l < H; l++ ){
-	  								cumprod[l] *= (1 - a(q,l)) * (V(k,l)== V(k,l)) + a(q,l) * p[cumdime[l] + V(i,l)];
+	  								cumprod[l] *= (1 - a(q,l)) * (V(k,l)== V(i,l)) + a(q,l) * p[cumdime[l] + V(i,l)];
 	  								pclusterM[l] = pclusterM[l] * a(q,l) * p[cumdime[l] + V(i,l)]+ (1 - a(q,l)) * p[cumdime[l] + V(i,l)] * cumprod[l];	
 	  							}
 	  						}
