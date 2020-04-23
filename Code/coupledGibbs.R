@@ -3,6 +3,10 @@ coupleGibbs <- function(nMCMC, N1, N2, g, p1, p2, a1, a2, n, earlyStop = TRUE){
   lambda2 <- sample(n, size = n, replace = T)
   lambda1 <- relabel(lambda1)$lambda
   lambda2 <- relabel(lambda2)$lambda
+  partition1 <- init_clustering(lambda1 - 1)
+  partition2 <- init_clustering(lambda2 - 1)
+  ll_clusters1 <- compute_loglikelihood_clusters(partition1, p1, V, dimV, a1)
+  ll_clusters2 <- compute_loglikelihood_clusters(partition2, p2, V, dimV, a2)
   meetTime <- Inf
   N1_chain <- N2_chain <- rep(0, nMCMC)
   k1_chain <- k2_chain <- rep(0, nMCMC)
@@ -12,13 +16,10 @@ coupleGibbs <- function(nMCMC, N1, N2, g, p1, p2, a1, a2, n, earlyStop = TRUE){
   w_upper <- rep(0,nMCMC)
   ### run L iterations for the chain lambda1, N1 and a1
   for (iter in 1:L){
-    for (j in 1:n){
-      lambdajs <- coupleLambda(j, lambda1, lambda2, p1 = p, p2 = p, a1 = a1, a2 = a2, N1 = N1, N2 = N2)
-      lambda1[j] <- lambdajs[1]
-    }
-    relabel1 <- relabel(lambda1)
-    lambda1 <- relabel1$lambda
-    a1 <- a1[relabel1$iis,]
+    updateLambdaRes <- update_lambda(lambda1 - 1, partition1, ll_clusters1, p, V, dimV, a, N1)
+    lambda1 <- updateLambdaRes$lambda + 1
+    partition1 <- updateLambdaRes$clustering
+    ll_clusters1 <- updateLambdaRes$clusterloglikelihoods
     ksize1 <- length(unique(lambda1))
     Ns <- coupleN(N1 = N1, N2 = N2, k1 = ksize1, k2 = ksize1, g, n)
     N1 <- Ns[1]
@@ -29,6 +30,7 @@ coupleGibbs <- function(nMCMC, N1, N2, g, p1, p2, a1, a2, n, earlyStop = TRUE){
   }
   ### try to couple the chains with lag L
   iter <- L + 1
+  meet <- FALSE
   for (iter in (L + 1):nMCMC){
     ## update lambda 
     for (j in 1:n){
@@ -70,7 +72,6 @@ coupleGibbs <- function(nMCMC, N1, N2, g, p1, p2, a1, a2, n, earlyStop = TRUE){
     N2 <- Ns[2]
     N1_chain[iter] <- N1
     N2_chain[iter - L] <- N2
-    meet <- FALSE
     percentageCoupled[iter] <- ( sum(lambda1 == lambda2) + sum(p1 == p2)) / (n + length(p1))
     if (iter %% (nMCMC / 50) == 0 ){
       print(paste('iteration', iter, percentageCoupled[iter] * 100, "percent coupled",sep = ' '))
