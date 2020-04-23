@@ -1,17 +1,12 @@
 rm(list = ls())
 set.seed(1)
 source("getData.R")
-# source("initPara.R")
-# source("coupleMultinomial.R")
 library(Rcpp)
-# sourceCpp("computeNweights.cpp")
-# sourceCpp("computeQcpp.cpp")
-# source("coupleLambda.R")
-# source("couple_multinomial_alt.R")
-# source("coupleN.R")
-# source("relabel.R")
-sourceCpp("init_clustering.cpp")
 
+sourceCpp("init_clustering.cpp")
+sourceCpp("compute_loglikelihood_clusters.cpp")
+## important for indexing
+V <- V - 1 
 ## work with smaller data
 V <- V[1:10,1:4]
 ## numbers of possibilities for each column
@@ -36,6 +31,39 @@ print(lambda)
 clustering <- init_clustering(lambda-1)
 clustering$clsize
 
-compute_loglikelihood_clusters(clustering, p, V, dimV, a)
+ll_cluster <- compute_loglikelihood_clusters(clustering, p, V, dimV, a)
+ll_cluster
 
+## manual computation of the log likelihood in R, to check
+for (icluster in 1:n){
+  cat("cluster", icluster, "\n")
+  print(ll_cluster[icluster,])
+  if (clustering$clsize[icluster]==0){
+    print(rep(-Inf,Hdim))
+  } else {
+    members <- clustering$clmembers[icluster,1:clustering$clsize[icluster]]
+    cat("members", members, "\n")
+    firstmember <- members[1]
+    ## compute associated log likelihood
+    ll_per_field <- as.numeric(log(sapply(1:Hdim, function(index) (ALPHA[[index]])[V[firstmember+1,index]+1])))
+    ## if there are more than one member, implement recursion
+    for (l in 1:Hdim){
+      ll_per_field[l] <- log(a[icluster,l] * (ALPHA[[l]])[V[9,l]+1]) + ll_per_field[l]
+      secondterm <- log((1-a[icluster,l])) + log((ALPHA[[l]])[V[9,l]+1]) + log((1-a[icluster,l])*(V[9,l]==V[4,l]) + a[icluster,l] * (ALPHA[[l]])[V[4,l]+1])
+      ll_per_field[l] <- log(exp(ll_per_field[l]) + exp(secondterm))
+    }
+    ll_per_field
+    
+    print(ll_per_field)
+  }
+}
+
+## adds 9th obs
+icluster <- 1
+for (l in 1:Hdim){
+  ll_per_field[l] <- log(a[icluster,l] * (ALPHA[[l]])[V[9,l]+1]) + ll_per_field[l]
+  secondterm <- log((1-a[icluster,l])) + log((ALPHA[[l]])[V[9,l]+1]) + log((1-a[icluster,l])*(V[9,l]==V[4,l]) + a[icluster,l] * (ALPHA[[l]])[V[4,l]+1])
+  ll_per_field[l] <- log(exp(ll_per_field[l]) + exp(secondterm))
+}
+ll_per_field
 
