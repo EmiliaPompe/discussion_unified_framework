@@ -6,7 +6,7 @@ nMCMC <- 600
 nBurn <- nMCMC / 2
 nRepeats <- 100
 L <- 3
-concentraton <- 1000
+concentration <- 1000
 ### production config
 # nMCMC <- 10000
 # nBurn <- 5000
@@ -58,7 +58,7 @@ a2 <- matrix(0.01, nrow = n, ncol = H)
 p1 <- p 
 p2 <- rep(NA, length(p1))
 for (l in 1:H){
-  p2[cumdime[l] : (cumdime[l+1] -1 ) ] <- gtools::rdirichlet(1, alpha = p1[cumdime[l] : (cumdime[l+1] - 1)] * concentraton )[1,]
+  p2[cumdime[l] : (cumdime[l+1] -1 ) ] <- gtools::rdirichlet(1, alpha = p1[cumdime[l] : (cumdime[l+1] - 1)] * concentration )[1,]
   # print(sum(p2[cumdime[l] : (cumdime[l+1] -1 ) ]))
 }
 

@@ -7,6 +7,7 @@ source("getData.R")
 source("initPara.R")
 library(Rcpp)
 sourceCpp("init_clustering.cpp")
+sourceCpp("compute_loglikelihood_clusters.cpp")
 sourceCpp("compute_psampq.cpp")
 sourceCpp("computeNweights.cpp")
 source("couple_dirichlet.R")
@@ -83,7 +84,7 @@ getCouplingTime <- function(nRepeats = 1000){
   mTimes <- rep(NA, nRepeats)
   wUpper <- matrix(data = 0, nrow = nRepeats, ncol = nMCMC)
   for (i in 1:nRepeats){
-    result <- coupleGibbs(nMCMC, N1, N2, g, p, a1, a2,n, earlyStop = TRUE)
+    result <- coupleGibbs(nMCMC, N1, N2, g, p1, p2, a1, a2,n, earlyStop = TRUE)
     mTimes[i] <- min(nMCMC, result$meetTime)
     ## this is equation 4 in Biswas et al. 2019
     for (t in 1 : (mTimes[i] - 1 - result$L)){
@@ -121,17 +122,17 @@ plot(colMeans(w_upper[,ts]),
      ylab = 'upper bound d_W',
      type = 'l')
 
-pdf("distance.pdf", width = 6, height = 4)
-par(mfrow = c(1,3), mar = c(4,4,1,1))
-title <- paste( "histogram of coupling time, with", nRepeats, "repeats", sep = " ")
-hist(repeatCoupling$meeting_times, main = title, xlab = 'meetimg times')
-plot(ts, tv_upper, main = '', type = 'l',
-     xlab = paste('iteration, lag =', L, sep = ' '),
-     ylab = 'upper bound d_TV')
-abline(h = 1,col = 'red')
-plot(ts, colMeans(w_upper[,ts]),
-     xlab = paste('iteration, lag =', L, sep = ' '),
-     ylab = 'upper bound d_W',
-     type = 'l')
-dev.off()
+# pdf("distance.pdf", width = 6, height = 4)
+# par(mfrow = c(1,3), mar = c(4,4,1,1))
+# title <- paste( "histogram of coupling time, with", nRepeats, "repeats", sep = " ")
+# hist(repeatCoupling$meeting_times, main = title, xlab = 'meetimg times')
+# plot(ts, tv_upper, main = '', type = 'l',
+#      xlab = paste('iteration, lag =', L, sep = ' '),
+#      ylab = 'upper bound d_TV')
+# abline(h = 1,col = 'red')
+# plot(ts, colMeans(w_upper[,ts]),
+#      xlab = paste('iteration, lag =', L, sep = ' '),
+#      ylab = 'upper bound d_W',
+#      type = 'l')
+# dev.off()
 
