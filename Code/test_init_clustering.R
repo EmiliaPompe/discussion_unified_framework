@@ -23,6 +23,7 @@ p=as.double(unlist(ALPHA[1:Hdim]))
 
 ## a is alpha' 
 a <- matrix(0.01, nrow = n, ncol = H)
+a <- a[,1:Hdim]
 g <- 1.02
 N <- 50
 ## lambda is eta  in the paper
@@ -36,34 +37,35 @@ ll_cluster
 
 ## manual computation of the log likelihood in R, to check
 for (icluster in 1:n){
-  cat("cluster", icluster, "\n")
-  print(ll_cluster[icluster,])
+  cat("cluster", icluster, "of size", clustering$clsize[icluster], "\n")
   if (clustering$clsize[icluster]==0){
     print(rep(-Inf,Hdim))
   } else {
     members <- clustering$clmembers[icluster,1:clustering$clsize[icluster]]
     cat("members", members, "\n")
+    cat("ll computed in Rcpp:\n", ll_cluster[icluster,], "\n")
     firstmember <- members[1]
     ## compute associated log likelihood
     ll_per_field <- as.numeric(log(sapply(1:Hdim, function(index) (ALPHA[[index]])[V[firstmember+1,index]+1])))
     ## if there are more than one member, implement recursion
-    for (l in 1:Hdim){
-      ll_per_field[l] <- log(a[icluster,l] * (ALPHA[[l]])[V[9,l]+1]) + ll_per_field[l]
-      secondterm <- log((1-a[icluster,l])) + log((ALPHA[[l]])[V[9,l]+1]) + log((1-a[icluster,l])*(V[9,l]==V[4,l]) + a[icluster,l] * (ALPHA[[l]])[V[4,l]+1])
-      ll_per_field[l] <- log(exp(ll_per_field[l]) + exp(secondterm))
-    }
-    ll_per_field
-    
-    print(ll_per_field)
+    if (clustering$clsize[icluster]>1){
+      for (imember in 2:clustering$clsize[icluster]){
+        currentmember <- members[imember]
+        for (l in 1:Hdim){
+          ll_per_field[l] <- ll_per_field[l] + log(a[icluster,l] * (ALPHA[[l]])[V[currentmember+1,l]+1])
+          ## and for the second term loop over other members of the cluster
+          secondterm <- log((1-a[icluster,l])) + log((ALPHA[[l]])[V[currentmember+1,l]+1])
+          for (iothermember in 1:(clustering$clsize[icluster]-1)){
+            othermember <- members[iothermember]
+            secondterm <- secondterm + log((1-a[icluster,l])*(V[othermember+1,l]==V[currentmember+1,l]) + a[icluster,l] * (ALPHA[[l]])[V[othermember+1,l]+1])
+          }
+          max_terms <- max(secondterm, ll_per_field[l])
+          ll_per_field[l] <- max_terms + log(exp(ll_per_field[l] - max_terms) + exp(secondterm - max_terms))
+        }
+      }
+    }  
+    cat("ll computer in R:\n", ll_per_field, "\n")
   }
 }
 
-## adds 9th obs
-icluster <- 1
-for (l in 1:Hdim){
-  ll_per_field[l] <- log(a[icluster,l] * (ALPHA[[l]])[V[9,l]+1]) + ll_per_field[l]
-  secondterm <- log((1-a[icluster,l])) + log((ALPHA[[l]])[V[9,l]+1]) + log((1-a[icluster,l])*(V[9,l]==V[4,l]) + a[icluster,l] * (ALPHA[[l]])[V[4,l]+1])
-  ll_per_field[l] <- log(exp(ll_per_field[l]) + exp(secondterm))
-}
-ll_per_field
 
