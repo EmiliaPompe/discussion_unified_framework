@@ -1,5 +1,26 @@
+V <- V - 1
 ## initialize parmeters 
-nMCMC <- 2000
+### test config
+stepsize <- 1000
+nMCMC <- 600
+nBurn <- nMCMC / 2
+nRepeats <- 100
+L <- 3
+concentration <- 1000
+### production config
+# nMCMC <- 10000
+# nBurn <- 5000
+# nRepeats <- 1000
+
+
+## smaller data config
+## work with smaller data
+V <- V[1:20,1:4]
+## numbers of possibilities for each column
+dimV <- dimV[1:4]
+
+
+dime=as.integer(dimV)
 ## data size 
 n=as.integer(nrow(V))
 ## number of fields
@@ -7,14 +28,18 @@ Hdim=as.integer(ncol(V))
 H <- Hdim[1]
 ## lambda is also eta - labels
 lambda <- sample(n, size = n, replace = T) 
+
+cumdime <- 1 +  c(0,  cumsum(dime)) 
 ## theta - parameter for true record value
+## frequencies of categories 
 p=as.double(unlist(ALPHA)) ## this is a flat vector, alternatively can store p in an array, but this is what the C file is like
-# p[p==0] <- 0.005
-## helps getting the index of theta
-dime=as.integer(dimV)
-cumdime <- 1 + c(0 ,  cumsum(dime)) 
-## this is for indexing 
-V <- V - 1
+p <- p[1: sum(dime)]
+## for small dataset need to change the zeros in p 
+# p[p == 0] <- 0.005
+# for (l in 1:H){
+#   p[1 + cumdime[l] + c(0 : (dime[l] - 1))] <- p[cumdime[l] + c(0 : (dime[l] - 1))]  / sum(p[cumdime[l] + c(0 : (dime[l] - 1))])
+# }
+
 ## alpha - distorion parameter
 a <- matrix(0.01, nrow = n, ncol = H)
 ## hyperparameter for prior on N 
@@ -30,6 +55,12 @@ N1 <- N1
 N2 <- N1 + 10 
 a1 <- matrix(0.01, nrow = n, ncol = H)
 a2 <- matrix(0.01, nrow = n, ncol = H)
+p1 <- p 
+p2 <- rep(NA, length(p1))
+for (l in 1:H){
+  p2[cumdime[l] : (cumdime[l+1] -1 ) ] <- gtools::rdirichlet(1, alpha = p1[cumdime[l] : (cumdime[l+1] - 1)] * concentration )[1,]
+  # print(sum(p2[cumdime[l] : (cumdime[l+1] -1 ) ]))
+}
 
 ## used to get the ratio
 # pcluster_M <- prob_M <- matrix(NA, nrow = n, ncol = H)
