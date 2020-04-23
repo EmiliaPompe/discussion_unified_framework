@@ -1,3 +1,4 @@
+V <- V - 1
 ## initialize parmeters 
 ### test config
 stepsize <- 1000
@@ -5,7 +6,7 @@ nMCMC <- 600
 nBurn <- nMCMC / 2
 nRepeats <- 100
 L <- 3
-
+concentraton <- 1000
 ### production config
 # nMCMC <- 10000
 # nBurn <- 5000
@@ -28,10 +29,11 @@ H <- Hdim[1]
 ## lambda is also eta - labels
 lambda <- sample(n, size = n, replace = T) 
 
-cumdime <- c(0 ,  cumsum(dime)) 
+cumdime <- 1 +  c(0,  cumsum(dime)) 
 ## theta - parameter for true record value
 ## frequencies of categories 
 p=as.double(unlist(ALPHA)) ## this is a flat vector, alternatively can store p in an array, but this is what the C file is like
+p <- p[1: sum(dime)]
 ## for small dataset need to change the zeros in p 
 # p[p == 0] <- 0.005
 # for (l in 1:H){
@@ -53,6 +55,12 @@ N1 <- N1
 N2 <- N1 + 10 
 a1 <- matrix(0.01, nrow = n, ncol = H)
 a2 <- matrix(0.01, nrow = n, ncol = H)
+p1 <- p 
+p2 <- rep(NA, length(p1))
+for (l in 1:H){
+  p2[cumdime[l] : (cumdime[l+1] -1 ) ] <- gtools::rdirichlet(1, alpha = p1[cumdime[l] : (cumdime[l+1] - 1)] * concentraton )[1,]
+  # print(sum(p2[cumdime[l] : (cumdime[l+1] -1 ) ]))
+}
 
 ## used to get the ratio
 # pcluster_M <- prob_M <- matrix(NA, nrow = n, ncol = H)
