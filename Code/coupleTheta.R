@@ -10,10 +10,10 @@ update_theta <- function(p, clustering){
   	## current state
     x <- p[cumdime[l] : (cumdime[l+1] - 1)] 
     ## dirichlet proposal
-    x_propose <- gtools::rdirichlet(1, alpha = concentraton * x)[1,]
+    x_propose <- gtools::rdirichlet(1, alpha = (1 + concentration * x))[1,]
     p_propose[ cumdime[l] : (cumdime[l+1] - 1)] <- x_propose
     ## transition ratio 
-    lratio <- log(gtools::ddirichlet(x = x, alpha = concentraton * x_propose)) - log(gtools::ddirichlet(x = x_propose, alpha = concentraton * x))
+    lratio <- log(gtools::ddirichlet(x = x, alpha = (1 + concentratoin * x_propose))) - log(gtools::ddirichlet(x = x_propose, alpha = (1 + concentration * x)))
     cl_log_lik_new <- compute_loglikelihood_clusters(clustering, p_propose, V, dimV, a)
     ## log accept probability
     laccept <- lratio - sum_notInf(cl_log_lik[,l]) + sum_notInf(cl_log_lik_new[,l])
@@ -38,13 +38,13 @@ coupleTheta <- function(p1, clustering1,
     ## first propose from coupled dirichlet
     x1 <- p1[cumdime[l] : (cumdime[l+1] - 1)] 
     x2 <- p1[cumdime[l] : (cumdime[l+1] - 1)]
-    cp_dirichlet <- couple_dirichlet(mean1 = x1, mean2 = x2, inversescale = 1 / concentraton)$xy
+    cp_dirichlet <- couple_dirichlet(mean1 = (1 / concentration + x1) , mean2 = (1 / concentration + x2), inversescale = 1 / concentration)$xy
     x1_propose <- cp_dirichlet[1:length(x1)]
     x2_propose <- cp_dirichlet[(length(x1) + 1) : (2 * length(x1))]
     p1_propose[ cumdime[l] : (cumdime[l+1] - 1)] <- x1_propose
     p2_propose[ cumdime[l] : (cumdime[l+1] - 1)] <- x2_propose
-    lratio1 <- log(gtools::ddirichlet(x = x1, alpha = concentraton * x1_propose)) - log(gtools::ddirichlet(x = x1_propose, alpha = concentraton * x1))
-    lratio2 <- log(gtools::ddirichlet(x = x2, alpha = concentraton * x2_propose)) - log(gtools::ddirichlet(x = x2_propose, alpha = concentraton * x2))
+    lratio1 <- log(gtools::ddirichlet(x = x1, alpha = (1 + concentration * x1_propose))) - log(gtools::ddirichlet(x = x1_propose, alpha = (1 + concentration * x1)))
+    lratio2 <- log(gtools::ddirichlet(x = x2, alpha = (1 + concentration * x2_propose))) - log(gtools::ddirichlet(x = x2_propose, alpha = (1 + concentration * x2)))
     cl_log_lik1_new <- compute_loglikelihood_clusters(clustering1, p1_propose, V, dimV, a)
     cl_log_lik2_new <- compute_loglikelihood_clusters(clustering2, p2_propose, V, dimV, a)
     laccept1 <- lratio1 - sum_notInf(cl_log_lik1[,l]) + sum_notInf(cl_log_lik1_new[,l])

@@ -1,12 +1,17 @@
 rm(list = ls())
 set.seed(1)
 source("getData.R")
+# source("initPara.R")
+# source("coupleMultinomial.R")
 library(Rcpp)
+# sourceCpp("computeNweights.cpp")
+# sourceCpp("computeQcpp.cpp")
+# source("coupleLambda.R")
+# source("couple_multinomial_alt.R")
+# source("coupleN.R")
+# source("relabel.R")
 sourceCpp("init_clustering.cpp")
-sourceCpp("compute_loglikelihood_clusters.cpp")
 
-## important for indexing
-V <- V - 1 
 ## work with smaller data
 V <- V[1:10,1:4]
 ## numbers of possibilities for each column
@@ -33,12 +38,4 @@ clustering$clsize
 
 compute_loglikelihood_clusters(clustering, p, V, dimV, a)
 
-## if we take a cluster with only one member we can verify log likelihood computation manually
-# index of a cluster of size one
-icluster <- which(clustering$clsize==1)[1]
-# associated loglikelihood per field
-compute_loglikelihood_clusters(clustering, p, V, dimV, a)[icluster,]
-# index of corresponding observation
-iobs <- clustering$clmembers[icluster,1]
-sapply(1:Hdim, function(i) log(as.numeric(ALPHA[[i]][V[iobs+1,i]+1])))
-# note how we have to be careful with the indexing since C indexes from 0 and R from 1
+
