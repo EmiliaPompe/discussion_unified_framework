@@ -28,6 +28,7 @@ g <- 1.02
 N <- 50
 ## lambda is eta  in the paper
 lambda <- sample(n, size = n, replace = T) 
+lambda <- sample(n, size = n, replace = T) 
 print(lambda)
 clustering <- init_clustering(lambda-1)
 clustering$clsize
@@ -55,10 +56,11 @@ for (icluster in 1:n){
           ll_per_field[l] <- ll_per_field[l] + log(a[icluster,l] * (ALPHA[[l]])[V[currentmember+1,l]+1])
           ## and for the second term loop over other members of the cluster
           secondterm <- log((1-a[icluster,l])) + log((ALPHA[[l]])[V[currentmember+1,l]+1])
-          for (iothermember in 1:(clustering$clsize[icluster]-1)){
+          for (iothermember in 1:imember){
             othermember <- members[iothermember]
             secondterm <- secondterm + log((1-a[icluster,l])*(V[othermember+1,l]==V[currentmember+1,l]) + a[icluster,l] * (ALPHA[[l]])[V[othermember+1,l]+1])
           }
+          # cat("adds second term to ", l, "-th term:", secondterm, "\n")
           max_terms <- max(secondterm, ll_per_field[l])
           ll_per_field[l] <- max_terms + log(exp(ll_per_field[l] - max_terms) + exp(secondterm - max_terms))
         }

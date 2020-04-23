@@ -52,9 +52,9 @@ NumericMatrix compute_loglikelihood_clusters(const List & clustering,
         for (int imember = 1; imember < clsize[icluster]; imember++){
           // original index of that member (i.e. corresponding row in V)
           int q = clmembers(icluster,imember);
-          double logprod = 0.;
           // loop over fields 
           for (int l = 0; l < H; l++){
+            double logprod = 0.;
             // to implement first part of recursion
             // multiply by associated alpha' * V(q,l)
             cl_likelihood_field(l) += log(a(icluster,l) * p[cumdime[l] + V(q,l)]);
@@ -69,6 +69,7 @@ NumericMatrix compute_loglikelihood_clusters(const List & clustering,
             }
             logprod += log((1 - a(icluster,l)) * p[cumdime[l] + V(q,l)]);
             // next we need to define exp(logprod) + exp(cl_likelihood_field(l))
+            // Rcout << "adds second term to l-th term" << logprod <<"\n";
             double max_logs = std::max(logprod, cl_likelihood_field(l));
             cl_likelihood_field(l) = max_logs + log(exp(logprod - max_logs) + exp(cl_likelihood_field(l) - max_logs));
           }
