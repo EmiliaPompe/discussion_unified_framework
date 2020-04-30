@@ -2,7 +2,7 @@
 # run this file to get the data 
 
 ##################DATA PREPARATION############################
-rm(list = ls())
+# rm(list = ls())
 library(RecordLinkage)
 data(RLdata500)
 myRLDATA=cbind(id=identity.RLdata500,RLdata500)
