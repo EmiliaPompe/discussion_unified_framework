@@ -3,23 +3,39 @@
 #### keeping alpha fixed
 rm(list = ls())
 set.seed(2020)
+test <- F
 source("getData.R")
 source("initPara.R")
 library(Rcpp)
 sourceCpp("init_clustering.cpp")
 sourceCpp("compute_loglikelihood_clusters.cpp")
-sourceCpp("compute_psampq.cpp")
-sourceCpp("computeNweights.cpp")
+sourceCpp("compute_loglikelihood_clusters_field.cpp")
+sourceCpp("update_lambda.cpp")
+sourceCpp("update_clustering.cpp")
+sourceCpp("compute_include_exclude_clustering_likelihood.cpp")
 source("couple_dirichlet.R")
 source("couple_multinomial_alt.R")
 source("couple_normal.R")
 source("coupleTheta.R")
-source("coupleLambda.R")
+source("coupleEta.R")
 source("coupleN.R")
 source("relabel.R")
 source("coupledGibbs.R")
+library(tictoc)
 
-result <- coupleGibbs(nMCMC, N1, N2, g, p1,p2, a1, a2,n, earlyStop = FALSE)
+tic()
+result <- coupleGibbs(nMCMC, N1, N2, g, theta1,theta2, alpha1, alpha2,n, lag = 3, earlyStop = FALSE)
+toc()
+
+plot(result$percentageCoupled, type = 'l')
+plot(result$k1_chain[(lag + 1) : (lag + nMCMC - lag)], type = 'l')
+lines(result$k2_chain[1 : (nMCMC - lag)], col = 'red')
+plot(result$N1_chain[(lag + 1) : (lag + nMCMC - lag)], type = 'l')
+lines(result$N2_chain[1 : (nMCMC - lag)], col = 'red' )
+plot(result$theta1_chain[ 2, (lag + 1) : (lag + nMCMC - lag )], type = 'l')
+lines(result$theta2_chain[2, 1 : (nMCMC - lag )], col = 'red')
+plot(result$eta1_chain[10,(lag + 1) : (lag + nMCMC - lag )], type = 'l')
+lines(result$eta2_chain[10, 1 : (nMCMC - lag )], col = 'red')
 
 # print(result$meetTime)
 # print(which(result$N1_chain != result$N2_chain))
@@ -65,7 +81,7 @@ result <- coupleGibbs(nMCMC, N1, N2, g, p1,p2, a1, a2,n, earlyStop = FALSE)
 #     k2[i]=length(unique(sample(NN2[i],size=500,rep=T)))
 #   }
 # }
-
+# 
 # pdf("reFigure2.pdf")
 # par(mfrow = c(1,2))
 # 
@@ -84,11 +100,11 @@ getCouplingTime <- function(nRepeats = 1000){
   mTimes <- rep(NA, nRepeats)
   wUpper <- matrix(data = 0, nrow = nRepeats, ncol = nMCMC)
   for (i in 1:nRepeats){
-    result <- coupleGibbs(nMCMC, N1, N2, g, p1, p2, a1, a2,n, earlyStop = TRUE)
+    result <- coupleGibbs(nMCMC, N1, N2, g, theta1, theta2, alpha1, alpha2,n, lag = lag, earlyStop = TRUE)
     mTimes[i] <- min(nMCMC, result$meetTime)
     ## this is equation 4 in Biswas et al. 2019
-    for (t in 1 : (mTimes[i] - 1 - result$L)){
-      wUpper[i, t] <- sum(result$w_upper[1: (mTimes[i] - result$L - t)])
+    for (t in 1 : (mTimes[i] - 1 - result$lag)){
+      wUpper[i, t] <- sum(result$w_upper[1: (mTimes[i] - result$lag - t)])
     }
   }
   return(list(meeting_times = mTimes,
@@ -118,21 +134,20 @@ plot(ts, tv_upper, main = '', type = 'l',
 abline(h = 1,col = 'red')
 w_upper <- repeatCoupling$wUpper
 plot(colMeans(w_upper[,ts]),
-     xlab = paste('iteration, lag =', L, sep = ' '),
+     xlab = paste('iteration, lag =', lag, sep = ' '),
      ylab = 'upper bound d_W',
      type = 'l')
 
-# pdf("distance.pdf", width = 6, height = 4)
-# par(mfrow = c(1,3), mar = c(4,4,1,1))
-# title <- paste( "histogram of coupling time, with", nRepeats, "repeats", sep = " ")
-# hist(repeatCoupling$meeting_times, main = title, xlab = 'meetimg times')
-# plot(ts, tv_upper, main = '', type = 'l',
-#      xlab = paste('iteration, lag =', L, sep = ' '),
-#      ylab = 'upper bound d_TV')
-# abline(h = 1,col = 'red')
-# plot(ts, colMeans(w_upper[,ts]),
-#      xlab = paste('iteration, lag =', L, sep = ' '),
-#      ylab = 'upper bound d_W',
-#      type = 'l')
-# dev.off()
-
+pdf("distance.pdf", width = 6, height = 4)
+par(mfrow = c(1,3), mar = c(4,4,1,1))
+title <- paste( "histogram of coupling time, with", nRepeats, "repeats", sep = " ")
+hist(repeatCoupling$meeting_times, main = title, xlab = 'meetimg times')
+plot(ts, tv_upper, main = '', type = 'l',
+     xlab = paste('iteration, lag =', lag, sep = ' '),
+     ylab = 'upper bound d_TV')
+abline(h = 1,col = 'red')
+plot(ts, colMeans(w_upper[,ts]),
+     xlab = paste('iteration, lag =', lag, sep = ' '),
+     ylab = 'upper bound d_W',
+     type = 'l')
+dev.off()
