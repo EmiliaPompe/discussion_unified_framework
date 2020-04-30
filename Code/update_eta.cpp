@@ -72,10 +72,22 @@ List update_eta(const IntegerVector eta_previous,
         }
         logprod += log((1 - alpha(label,l)) * theta_field(V(ieta,l)));
         // next we need to define exp(clusterloglikelihoods(l)) - exp(logprod)
-        // double max_logs = std::max(logprod, clusterloglikelihoods(label,l));
-        double max_logs = 0.;
+        double max_logs = std::max(logprod, clusterloglikelihoods(label,l));
+        // Rcout << "before the issue" << "\n";
+        // Rcout << clusterloglikelihoods(label,l) << "\n";
+        // Rcout << logprod << "\n";
+        // Rcout << max_logs << "\n";
         clusterloglikelihoods(label,l) = max_logs + log(exp(clusterloglikelihoods(label,l) - max_logs) - exp(logprod - max_logs));
+        // Rcout << clusterloglikelihoods(label,l) << "\n";
         clusterloglikelihoods(label,l) -= log(alpha(label,l) * theta_field(V(ieta,l)));
+        if (traits::is_nan<REALSXP>(clusterloglikelihoods(label,l))){
+          clusterloglikelihoods(label,l) = R_NegInf;
+        }
+        // if (any(is_nan(clusterloglikelihoods.row(label)))){
+        //   Rcout << "issue with " << label << "\n";
+        //   Rcout << max_logs << "\n";
+        //   Rcout << logprod << "\n";
+        // }
       }
     }
     // now we have a clustering and associated log likelihoods as if we did not have eta[ieta]
@@ -102,6 +114,12 @@ List update_eta(const IntegerVector eta_previous,
           // first part of recursion
           uponetajoining_loglikelihood(icluster, l) = log(alpha(icluster,l) * theta_field(V(ieta,l))) + 
             clusterloglikelihoods(icluster,l);
+          // if (icluster == 21){
+          //   Rcout << "issue...\n";
+          //   Rcout << log(alpha(icluster,l) * theta_field(V(ieta,l))) << "\n";
+          //   Rcout << clusterloglikelihoods(icluster,l) << "\n";
+          //   Rcout << uponetajoining_loglikelihood(icluster, l) << "\n";
+          // }
           double logprod = 0.;
           // next, implement second part of recursion
           for (int clustermember = 0; clustermember < clsize[icluster]; clustermember ++){
@@ -120,15 +138,28 @@ List update_eta(const IntegerVector eta_previous,
         logproba_eta[icluster] += (log(N-ksize) - log(n-ksize)); // (this is the prior)
         // note that when N = ksize this should be -Inf so it becomes impossible to create a new cluster 
       } else {
-        // i.e. P(eta[ieta] = q) where q is the label of an existing cluster
-        logproba_eta[icluster] = sum(uponetajoining_loglikelihood.row(icluster)) - sum(clusterloglikelihoods.row(icluster));
+        // Rcout << "nonempty cluster " << icluster << "\n";
+        // // i.e. P(eta[ieta] = q) where q is the label of an existing cluster
+        // if (icluster == 21){
+        //   for (int ii = 0; ii < p ; ii++){
+        //     // Rcout << clusterloglikelihoods(icluster,ii) << "\n";
+        //     Rcout << uponetajoining_loglikelihood(icluster,ii) << "\n";
+        //   }
+        // }
+        logproba_eta[icluster] = sum(uponetajoining_loglikelihood.row(icluster) - clusterloglikelihoods.row(icluster));
         logproba_eta[icluster] += 0.;
+        if (traits::is_infinite<REALSXP>(logproba_eta[icluster])){
+          logproba_eta[icluster] = -100000000.0;
+        }
+          // Rcout << "cluster logprob " << logproba_eta[icluster] << "\n";
       }
     }
+
     // sample from categorical/multinomial given logproba_eta
     double maxlogproba_eta = Rcpp::max(logproba_eta);
+    // Rcout << maxlogproba_eta << std::endl;
     NumericVector weights = exp(logproba_eta - maxlogproba_eta);
-    int draw;
+    int draw = 0;
     NumericVector cumsumw = cumsum(weights);
     GetRNGstate();
     NumericVector uniform = runif(1);
@@ -136,7 +167,7 @@ List update_eta(const IntegerVector eta_previous,
     double u = uniform(0) * cumsumw(n-1);
     int running_index = 0;
     double sumw = cumsumw(running_index);
-    if (u < sumw){
+    if (u <= sumw){
       draw = running_index;
     } else {
       while (u > sumw){
@@ -145,8 +176,9 @@ List update_eta(const IntegerVector eta_previous,
       }
       draw = running_index-1;
     }
-    // ... phew that was a bit painful! 
     // thus we update eta, and the clustering, and associated loglikelihoods appropriately
+    // Rcout << logproba_eta << "\n";
+    // Rcout << "ieta" << ieta << ", draw " << draw << "\n";
     eta[ieta] = draw;
     // update cluster log likelihoods
     clusterloglikelihoods.row(draw) = uponetajoining_loglikelihood.row(draw);

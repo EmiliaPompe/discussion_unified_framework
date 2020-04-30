@@ -26,7 +26,7 @@ expit <- function(x) exp(x)/(1+exp(x))
 ## important for indexing: entries of V should start at zero, following C convention
 V <- V - 1 
 ## let's work with a small data set for the moment
-V <- V[1:100,1:4]
+V <- V[1:250,1:4]
 ## numbers of possibilities for each column; denoted by M_ell in the overleaf document
 dimV <- as.integer(dimV[1:ncol(V)])
 ## define dimensions of V
@@ -74,11 +74,8 @@ Naccept <- 0
 for (imcmc in 1:nmcmc){
   if (verbose && (imcmc %% 1 == 0)) cat("iteration", imcmc, "/", nmcmc, "\n")
   ## update of eta
-  cat("# unique eta", length(unique(eta)), "\n")
-  cat("N =", N, "\n")
-  print(summary(eta))
-  # partition <- init_clustering(eta)
-  print(theta)
+  # print(N)
+  # print(length(unique(eta)))
   update_eta_result <- update_eta(eta, partition, partition_ll, theta, V, dimV, alpha, N)
   eta <- update_eta_result$eta
   partition_ll <- update_eta_result$clusterloglikelihoods
@@ -92,7 +89,8 @@ for (imcmc in 1:nmcmc){
   alpha <- alpha[relabel_result$old_to_new,]
   ## update of N
   ## random walk proposal
-  N_rw_stepsize <- 10
+  N_rw_stepsize <- 5
+  # if (verbose) print("update N")
   Nproposal <- sample(x = (N-N_rw_stepsize):(N+N_rw_stepsize), size = 1)
   if (Nproposal >= partition$ksize){
     target_proposal <- lfactorial(Nproposal) - lfactorial(Nproposal - partition$ksize) - (n+g) * log(Nproposal)
@@ -100,10 +98,11 @@ for (imcmc in 1:nmcmc){
     logu <- log(runif(1))
     if (logu < (target_proposal - target_current)){
       N <- Nproposal
+      Naccept <- Naccept + 1
     }
   }
-  Naccept <- Naccept + 1
   N_history[imcmc] <- N
+  # if (verbose) print("update N done")
   ## To add: update of beta 
   ##
   ## alpha <- expit(beta)
@@ -140,6 +139,9 @@ for (imcmc in 1:nmcmc){
   #
 }
  
+cat(Naccept/nmcmc, "\n")
 matplot(N_history, type = 'l')
 matplot(theta1_history[,1:10], type = 'l')
+
+# pairs(theta1_history[200:nmcmc,1:10])
  
