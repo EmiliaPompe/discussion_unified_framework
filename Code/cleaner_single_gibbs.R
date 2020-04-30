@@ -57,7 +57,8 @@ alpha <- expit(beta)
 theta <- as.double(unlist(ALPHA[1:p])) 
 ## compute log-likelihood associated with each cluster
 partition_ll <- compute_loglikelihood_clusters(partition, theta, V, dimV, alpha)
-
+## initialize quantities to monitor
+Naccept <- 0
 ## next iterate updates in the Gibbs sampler
 ## update of lambda
 update_eta_result <- update_eta(eta, partition, partition_ll, theta, V, dimV, alpha, N)
@@ -74,8 +75,16 @@ partition_ll <- partition_ll[relabel_result$old_to_new,]
 # random walk proposal
 delta <- 10
 Nproposal <- sample(x = (N-delta):(N+delta), size = 1)
-
-
+## compute conditional posterior at Nproposal
+if (Nproposal >= partition$ksize){
+  target_proposal <- lfactorial(Nproposal) - lfactorial(Nproposal - partition$ksize) - (n+g) * log(Nproposal)
+  target_current <- lfactorial(N) - lfactorial(N - partition$ksize) - (n+g) * log(N)
+  logu <- log(runif(1))
+  if (logu < (target_proposal - target_current)){
+    N <- Nproposal
+  }
+}
+Naccept <- Naccept + 1
 ## update of beta 
 
 alpha <- expit(beta)
