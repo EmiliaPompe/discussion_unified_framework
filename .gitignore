@@ -1,3 +1,5 @@
 **/*.DS_Store
+**/*.pdf
+Code/*.pdf
 **/*.Rhistory
 ../.Rhistory

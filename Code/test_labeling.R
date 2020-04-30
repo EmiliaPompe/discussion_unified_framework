@@ -105,8 +105,9 @@ relabel2 <- function(lambda, clustering){
   # identical(clustering$clsize[order(permutation)], newcl$clsize)
   # identical(clustering$clmembers[order(permutation),], newcl$clmembers)
   # identical(clustering$ksize, newcl$ksize)
-  return(list(lambda = newlambda, clustering = list(clsize = clustering$clsize[order(permutation)], ksize = clustering$ksize,
-                                                    clmembers = clustering$clmembers[order(permutation),])))
+  return(list(lambda = newlambda, old_to_new = order(permutation)))
+              # clustering = list(clsize = clustering$clsize[order(permutation)], ksize = clustering$ksize,
+              #                                       clmembers = clustering$clmembers[order(permutation),])))
 }
 
 

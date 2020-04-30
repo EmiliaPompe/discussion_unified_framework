@@ -17,8 +17,6 @@ for (i in 1:2) M4[,i]=as.character(myRLDATA[,6+i])
 V=cbind(M1,M2,M3,M4)
 V=as.data.frame(V)
 d=ncol(V);
-# n <- 20
-# V <- V[1:n,]
 
 ALPHA=list()
 for (l in 1:d) ALPHA[[l]]=table(V[,l])/nrow(V)

@@ -1,25 +1,25 @@
 #include <Rcpp.h>
 using namespace Rcpp;
 
-// function to update the lambda vector
-// where lambda[ilambda] is a label referring to one of N clusters
+// function to update the eta vector
+// where eta[ieta] is a label referring to one of N clusters
 // takes as arguments 
-// * lambda_previous, the vector of current lambdas
+// * eta_previous, the vector of current etas
 // * clustering_previous, the associated clustering
 // * ll_previous, the log-likelihoods associated with each cluster
-// * p
+// * theta
 // * V
 // * dimV
 // * a
 // * N
 // [[Rcpp::export]]
-List update_lambda(const IntegerVector lambda_previous,
+List update_eta(const IntegerVector eta_previous,
                    const List  clustering_previous,
                    const NumericMatrix ll_previous,
-                   const NumericVector & p,
+                   const NumericVector & theta,
                    const IntegerMatrix & V,
                    const IntegerVector & dimV,
-                   const NumericMatrix & a,
+                   const NumericMatrix & alpha,
                    int N) {
   IntegerVector clsize = clone(wrap(clustering_previous["clsize"]));
   IntegerMatrix clmembers = clone(wrap(clustering_previous["clmembers"]));
@@ -27,24 +27,24 @@ List update_lambda(const IntegerVector lambda_previous,
   int ksize = ksize_vec(0);
   //
   int n = V.nrow();
-  int H = V.ncol();
+  int p = V.ncol();
   NumericMatrix clusterloglikelihoods = clone(wrap(ll_previous));
   // 
-  int cumdime[H]; 
+  int cumdime[p]; 
   cumdime[0] = 0;
-  for (int l=1; l<H; l++){
+  for (int l=1; l<p; l++){
     cumdime[l] = cumdime[l-1] + dimV[l-1];
   }
   //
-  IntegerVector lambda = clone(wrap(lambda_previous));
-  // loop over components of lambda
-  for (int ilambda = 0; ilambda < n; ilambda++){
-    int label = lambda[ilambda];
-    // first, remove lambda[ilambda] from current partition
+  IntegerVector eta = clone(wrap(eta_previous));
+  // loop over components of eta
+  for (int ieta = 0; ieta < n; ieta++){
+    int label = eta[ieta];
+    // first, remove eta[ieta] from current partition
     // i.e. translate -1's towards the left
     bool shift = false;
     for (int icol = 0; icol < clsize[label]; icol++){
-      if (clmembers(label,icol) == ilambda){
+      if (clmembers(label,icol) == ieta){
         shift = true;
       }
       if (shift){
@@ -62,75 +62,75 @@ List update_lambda(const IntegerVector lambda_previous,
       // decrement cluster counter
       ksize --;
       // remove log-likelihoods
-      std::fill(clusterloglikelihoods.row(label).begin(), clusterloglikelihoods.row(label).end(), 0.);
+      std::fill(clusterloglikelihoods.row(label).begin(), clusterloglikelihoods.row(label).end(), R_NegInf);
     } else {
       // need to update log-likelihood associated with what's left in the non-empty cluster
       // for this we use equation (6), which, rearranged, give the likelihood
       // of a cluster with one less member, based on the likelihood of full cluster (reading the recursion backward)
       // loop over fields
-      for (int l = 0; l < H; l++){
+      for (int l = 0; l < p; l++){
         // compute second line of equation (6)
         double logprod = 0.;
         for (int othermember = 0; othermember < clsize[label]; othermember ++){
           int iother = clmembers(label,othermember);
-          logprod += log((1 - a(label,l)) * (V(ilambda,l) == V(iother,l)) + a(label,l) * p[cumdime[l] + V(iother,l)]);
+          logprod += log((1 - alpha(label,l)) * (V(ieta,l) == V(iother,l)) + alpha(label,l) * theta[cumdime[l] + V(iother,l)]);
         }
-        logprod += log((1 - a(label,l)) * p[cumdime[l] + V(ilambda,l)]);
+        logprod += log((1 - alpha(label,l)) * theta[cumdime[l] + V(ieta,l)]);
         // next we need to define exp(clusterloglikelihoods(l)) - exp(logprod)
         // double max_logs = std::max(logprod, clusterloglikelihoods(label,l));
         double max_logs = 0.;
         clusterloglikelihoods(label,l) = max_logs + log(exp(clusterloglikelihoods(label,l) - max_logs) - exp(logprod - max_logs));
-        clusterloglikelihoods(label,l) -= log(a(label,l) * p[cumdime[l] + V(ilambda,l)]);
+        clusterloglikelihoods(label,l) -= log(alpha(label,l) * theta[cumdime[l] + V(ieta,l)]);
       }
     }
-    // now we have a clustering and associated log likelihoods as if we did not have lambda[ilambda]
+    // now we have a clustering and associated log likelihoods as if we did not have eta[ieta]
     // next we can compute the likelihood associated with a new block with that label in it
-    NumericVector newblock_loglikelihood(H, 0.);
-    for (int l = 0; l < H; l++){
-      newblock_loglikelihood(l) = log(p[cumdime[l] + V(ilambda,l)]);
+    NumericVector newblock_loglikelihood(p, 0.);
+    for (int l = 0; l < p; l++){
+      newblock_loglikelihood(l) = log(theta[cumdime[l] + V(ieta,l)]);
     }
-    NumericMatrix uponlambdajoining_loglikelihood(n,H);
+    NumericMatrix uponetajoining_loglikelihood(n,p);
     // vector to aggregate likelihood and prior probabilities for new label
-    NumericVector logproba_lambda(n);
-    std::fill(logproba_lambda.begin(), logproba_lambda.end(), 0.);
+    NumericVector logproba_eta(n);
+    std::fill(logproba_eta.begin(), logproba_eta.end(), 0.);
     // next we loop over clusters
     for (int icluster = 0; icluster < n; icluster ++){
       // first compute likelihoods of joining
       if (clsize[icluster]==0){
         // this would be a new cluster
-        uponlambdajoining_loglikelihood.row(icluster) = newblock_loglikelihood;
+        uponetajoining_loglikelihood.row(icluster) = newblock_loglikelihood;
       } else {
         // this would be an existing cluster
-        for (int l = 0; l < H; l++){
+        for (int l = 0; l < p; l++){
           // first part of recursion
-          uponlambdajoining_loglikelihood(icluster, l) = log(a(icluster,l) * p[cumdime[l] + V(ilambda,l)]) + 
+          uponetajoining_loglikelihood(icluster, l) = log(alpha(icluster,l) * theta[cumdime[l] + V(ieta,l)]) + 
             clusterloglikelihoods(icluster,l);
           double logprod = 0.;
           // next, implement second part of recursion
           for (int clustermember = 0; clustermember < clsize[icluster]; clustermember ++){
             int qprime = clmembers(icluster, clustermember);
-            logprod += log((1 - a(icluster,l)) * (V(ilambda,l) == V(qprime,l)) + a(icluster,l) * p[cumdime[l] + V(qprime,l)]);
+            logprod += log((1 - alpha(icluster,l)) * (V(ieta,l) == V(qprime,l)) + alpha(icluster,l) * theta[cumdime[l] + V(qprime,l)]);
           }
-          logprod += log((1 - a(icluster,l)) * p[cumdime[l] + V(ilambda,l)]);
-          double max_logs = std::max(logprod, uponlambdajoining_loglikelihood(icluster, l));
-          uponlambdajoining_loglikelihood(icluster, l) = max_logs + log(exp(logprod - max_logs) + exp(uponlambdajoining_loglikelihood(icluster, l) - max_logs));
+          logprod += log((1 - alpha(icluster,l)) * theta[cumdime[l] + V(ieta,l)]);
+          double max_logs = std::max(logprod, uponetajoining_loglikelihood(icluster, l));
+          uponetajoining_loglikelihood(icluster, l) = max_logs + log(exp(logprod - max_logs) + exp(uponetajoining_loglikelihood(icluster, l) - max_logs));
         }
       }
       // then aggregate priors and conditional likelihood
       if (clsize[icluster] == 0){
-        // i.e. P(lambda[ilambda] = q) where q is the label of a new block
-        logproba_lambda[icluster] = sum(uponlambdajoining_loglikelihood.row(icluster));
-        logproba_lambda[icluster] += (log(N-ksize) - log(n-ksize)); // (this is the prior)
+        // i.e. P(eta[ieta] = q) where q is the label of a new block
+        logproba_eta[icluster] = sum(uponetajoining_loglikelihood.row(icluster));
+        logproba_eta[icluster] += (log(N-ksize) - log(n-ksize)); // (this is the prior)
         // note that when N = ksize this should be -Inf so it becomes impossible to create a new cluster 
       } else {
-        // i.e. P(lambda[ilambda] = q) where q is the label of an existing cluster
-        logproba_lambda[icluster] = sum(uponlambdajoining_loglikelihood.row(icluster)) - sum(clusterloglikelihoods.row(icluster));
-        logproba_lambda[icluster] += 0.;
+        // i.e. P(eta[ieta] = q) where q is the label of an existing cluster
+        logproba_eta[icluster] = sum(uponetajoining_loglikelihood.row(icluster)) - sum(clusterloglikelihoods.row(icluster));
+        logproba_eta[icluster] += 0.;
       }
     }
-    // sample from categorical/multinomial given logproba_lambda
-    double maxlogproba_lambda = Rcpp::max(logproba_lambda);
-    NumericVector weights = exp(logproba_lambda - maxlogproba_lambda);
+    // sample from categorical/multinomial given logproba_eta
+    double maxlogproba_eta = Rcpp::max(logproba_eta);
+    NumericVector weights = exp(logproba_eta - maxlogproba_eta);
     int draw;
     NumericVector cumsumw = cumsum(weights);
     GetRNGstate();
@@ -149,22 +149,22 @@ List update_lambda(const IntegerVector lambda_previous,
       draw = running_index-1;
     }
     // ... phew that was a bit painful! 
-    // thus we update lambda, and the clustering, and associated loglikelihoods appropriately
-    lambda[ilambda] = draw;
+    // thus we update eta, and the clustering, and associated loglikelihoods appropriately
+    eta[ieta] = draw;
     // update cluster log likelihoods
-    clusterloglikelihoods.row(draw) = uponlambdajoining_loglikelihood.row(draw);
+    clusterloglikelihoods.row(draw) = uponetajoining_loglikelihood.row(draw);
     // update clustering...
     // change number of cluster if need be
     if (clsize[draw] == 0){ 
       ksize += 1;
     }
     // adds index in matrix storing members of each cluster
-    clmembers(draw, clsize[draw]) = ilambda;
+    clmembers(draw, clsize[draw]) = ieta;
     // increment cluster size
     clsize[draw] += 1;
   }
   List clustering = List::create(Named("clsize") = clsize, Named("ksize") = ksize, Named("clmembers") = clmembers);  
-  return List::create(Named("lambda") = lambda, 
+  return List::create(Named("eta") = eta, 
                       Named("clusterloglikelihoods") = clusterloglikelihoods, 
                       Named("clustering") = clustering);
 }
