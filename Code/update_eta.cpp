@@ -7,16 +7,16 @@ using namespace Rcpp;
 // * eta_previous, the vector of current etas
 // * clustering_previous, the associated clustering
 // * ll_previous, the log-likelihoods associated with each cluster
-// * theta
-// * V
-// * dimV
-// * a
+// * theta, list of frequencies for each field
+// * V, observations
+// * dimV, number of possibilities for each field
+// * alpha, corruption probabilities for each field and cluster
 // * N
 // [[Rcpp::export]]
 List update_eta(const IntegerVector eta_previous,
                    const List  clustering_previous,
                    const NumericMatrix ll_previous,
-                   const NumericVector & theta,
+                   const List & theta,
                    const IntegerMatrix & V,
                    const IntegerVector & dimV,
                    const NumericMatrix & alpha,
@@ -30,12 +30,6 @@ List update_eta(const IntegerVector eta_previous,
   int p = V.ncol();
   NumericMatrix clusterloglikelihoods = clone(wrap(ll_previous));
   // 
-  int cumdime[p]; 
-  cumdime[0] = 0;
-  for (int l=1; l<p; l++){
-    cumdime[l] = cumdime[l-1] + dimV[l-1];
-  }
-  //
   IntegerVector eta = clone(wrap(eta_previous));
   // loop over components of eta
   for (int ieta = 0; ieta < n; ieta++){
@@ -69,25 +63,27 @@ List update_eta(const IntegerVector eta_previous,
       // of a cluster with one less member, based on the likelihood of full cluster (reading the recursion backward)
       // loop over fields
       for (int l = 0; l < p; l++){
+        NumericVector theta_field = theta[l];
         // compute second line of equation (6)
         double logprod = 0.;
         for (int othermember = 0; othermember < clsize[label]; othermember ++){
           int iother = clmembers(label,othermember);
-          logprod += log((1 - alpha(label,l)) * (V(ieta,l) == V(iother,l)) + alpha(label,l) * theta[cumdime[l] + V(iother,l)]);
+          logprod += log((1 - alpha(label,l)) * (V(ieta,l) == V(iother,l)) + alpha(label,l) * theta_field(V(iother,l)));
         }
-        logprod += log((1 - alpha(label,l)) * theta[cumdime[l] + V(ieta,l)]);
+        logprod += log((1 - alpha(label,l)) * theta_field(V(ieta,l)));
         // next we need to define exp(clusterloglikelihoods(l)) - exp(logprod)
         // double max_logs = std::max(logprod, clusterloglikelihoods(label,l));
         double max_logs = 0.;
         clusterloglikelihoods(label,l) = max_logs + log(exp(clusterloglikelihoods(label,l) - max_logs) - exp(logprod - max_logs));
-        clusterloglikelihoods(label,l) -= log(alpha(label,l) * theta[cumdime[l] + V(ieta,l)]);
+        clusterloglikelihoods(label,l) -= log(alpha(label,l) * theta_field(V(ieta,l)));
       }
     }
     // now we have a clustering and associated log likelihoods as if we did not have eta[ieta]
     // next we can compute the likelihood associated with a new block with that label in it
     NumericVector newblock_loglikelihood(p, 0.);
     for (int l = 0; l < p; l++){
-      newblock_loglikelihood(l) = log(theta[cumdime[l] + V(ieta,l)]);
+      NumericVector theta_field = theta[l];
+      newblock_loglikelihood(l) = log(theta_field(V(ieta,l)));
     }
     NumericMatrix uponetajoining_loglikelihood(n,p);
     // vector to aggregate likelihood and prior probabilities for new label
@@ -102,16 +98,17 @@ List update_eta(const IntegerVector eta_previous,
       } else {
         // this would be an existing cluster
         for (int l = 0; l < p; l++){
+          NumericVector theta_field = theta[l];
           // first part of recursion
-          uponetajoining_loglikelihood(icluster, l) = log(alpha(icluster,l) * theta[cumdime[l] + V(ieta,l)]) + 
+          uponetajoining_loglikelihood(icluster, l) = log(alpha(icluster,l) * theta_field(V(ieta,l))) + 
             clusterloglikelihoods(icluster,l);
           double logprod = 0.;
           // next, implement second part of recursion
           for (int clustermember = 0; clustermember < clsize[icluster]; clustermember ++){
             int qprime = clmembers(icluster, clustermember);
-            logprod += log((1 - alpha(icluster,l)) * (V(ieta,l) == V(qprime,l)) + alpha(icluster,l) * theta[cumdime[l] + V(qprime,l)]);
+            logprod += log((1 - alpha(icluster,l)) * (V(ieta,l) == V(qprime,l)) + alpha(icluster,l) * theta_field(V(qprime,l)));
           }
-          logprod += log((1 - alpha(icluster,l)) * theta[cumdime[l] + V(ieta,l)]);
+          logprod += log((1 - alpha(icluster,l)) * theta_field(V(ieta,l)));
           double max_logs = std::max(logprod, uponetajoining_loglikelihood(icluster, l));
           uponetajoining_loglikelihood(icluster, l) = max_logs + log(exp(logprod - max_logs) + exp(uponetajoining_loglikelihood(icluster, l) - max_logs));
         }

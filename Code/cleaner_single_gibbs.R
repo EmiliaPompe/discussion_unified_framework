@@ -1,49 +1,60 @@
 ## This script aims at simply running the Gibbs sampler on a small data set
+## this is work in progress
 rm(list = ls())
-set.seed(2020)
+set.seed(1)
+## load packages
 library(Rcpp)
 library(tidyverse)
+## set graphical themes
 theme_set(theme_minimal())
+## load data
 source("getData.R")
+## source functions
+## to relabel 
+source("relabel.R")
+## to define clustering/partition given vector of labels 'eta'
 sourceCpp("init_clustering.cpp")
+## to compute log-likelihood of the different clusters in the partition
 sourceCpp("compute_loglikelihood_clusters.cpp")
+## to perform full sweep of eta updates 
 sourceCpp("update_eta.cpp")
+## define logit and expit transformation
 logit <- function(x) log(x/(1-x))
 expit <- function(x) exp(x)/(1+exp(x))
-source("relabel.R")
 ##
-
-
 ## The data is the matrix V
-## important for indexing: entries of V should start at zero
+## important for indexing: entries of V should start at zero, following C convention
 V <- V - 1 
 ## let's work with a small data set for the moment
-V <- V[1:10,1:4]
-## numbers of possibilities for each column
-## this is denoted by M_ell in the overleaf document
-dimV <- as.integer(dimV[1:4])
-## the following vector is...
-cumdime <- 1 +  c(0,  cumsum(dimV)) 
-## define dimension of V
+V <- V[1:100,1:4]
+## numbers of possibilities for each column; denoted by M_ell in the overleaf document
+dimV <- as.integer(dimV[1:ncol(V)])
+## define dimensions of V
 n <- dim(V)[1]
 p <- dim(V)[2]
-## 
-## prior parameter on N 
+## prior parameter for N 
 g <- 1.02
+## number of MCMC iterations
+nmcmc <- 1e3
+## whether to print some things during the run, or not
+verbose <- TRUE
+## record history of certain components
+N_history <- rep(NA, nmcmc)
+theta1_history <- matrix(NA, nrow = nmcmc, ncol = dimV[1])
 ##
 ## The state of the Markov chain  is (eta, N, b', b0, theta)
+## First we initialize the chains
+## initial N
 ## initial eta 
-eta <- sample(n, size = n, replace = T) - 1
+eta <- sample(x = 1:n, size = n, replace = T) - 1
+N <- 2 * length(unique(eta))
 partition <- init_clustering(eta)
 relabel_result <- relabel2(eta, partition)
 eta <- relabel_result$eta
 partition$clsize <- partition$clsize[relabel_result$old_to_new] 
 partition$clmembers <- partition$clmembers[relabel_result$old_to_new,]
-
 # clusteval::cluster_similarity(eta, relabel_result$eta)
 # identical(init_clustering(relabel_result$eta), relabel_result$clustering)
-## initial N
-N <- 50
 m0 <- logit(0.01)
 s0 <- sqrt(0.1)
 ## initial b0
@@ -54,41 +65,81 @@ beta <- matrix(NA, nrow = n, ncol = p)
 for (field in 1:p) beta[,field] <- rnorm(n, beta0[field], s)
 alpha <- expit(beta)
 ## initial frequencies of categories, initial values
-theta <- as.double(unlist(ALPHA[1:p])) 
+theta <- ALPHA[1:p]
 ## compute log-likelihood associated with each cluster
 partition_ll <- compute_loglikelihood_clusters(partition, theta, V, dimV, alpha)
 ## initialize quantities to monitor
 Naccept <- 0
 ## next iterate updates in the Gibbs sampler
-## update of lambda
-update_eta_result <- update_eta(eta, partition, partition_ll, theta, V, dimV, alpha, N)
-eta <- update_eta_result$eta
-partition_ll <- update_eta_result$clusterloglikelihoods
-partition <- update_eta_result$clustering
-## relabel
-relabel_result <- relabel2(eta, partition)
-eta <- relabel_result$eta
-partition$clsize <- partition$clsize[relabel_result$old_to_new] 
-partition$clmembers <- partition$clmembers[relabel_result$old_to_new,]
-partition_ll <- partition_ll[relabel_result$old_to_new,]
-## update of N
-# random walk proposal
-delta <- 10
-Nproposal <- sample(x = (N-delta):(N+delta), size = 1)
-## compute conditional posterior at Nproposal
-if (Nproposal >= partition$ksize){
-  target_proposal <- lfactorial(Nproposal) - lfactorial(Nproposal - partition$ksize) - (n+g) * log(Nproposal)
-  target_current <- lfactorial(N) - lfactorial(N - partition$ksize) - (n+g) * log(N)
-  logu <- log(runif(1))
-  if (logu < (target_proposal - target_current)){
-    N <- Nproposal
+for (imcmc in 1:nmcmc){
+  if (verbose && (imcmc %% 1 == 0)) cat("iteration", imcmc, "/", nmcmc, "\n")
+  ## update of eta
+  cat("# unique eta", length(unique(eta)), "\n")
+  cat("N =", N, "\n")
+  print(summary(eta))
+  # partition <- init_clustering(eta)
+  print(theta)
+  update_eta_result <- update_eta(eta, partition, partition_ll, theta, V, dimV, alpha, N)
+  eta <- update_eta_result$eta
+  partition_ll <- update_eta_result$clusterloglikelihoods
+  partition <- update_eta_result$clustering
+  ## relabel 
+  relabel_result <- relabel2(eta, partition)
+  eta <- relabel_result$eta
+  partition$clsize <- partition$clsize[relabel_result$old_to_new]
+  partition$clmembers <- partition$clmembers[relabel_result$old_to_new,]
+  partition_ll <- partition_ll[relabel_result$old_to_new,]
+  alpha <- alpha[relabel_result$old_to_new,]
+  ## update of N
+  ## random walk proposal
+  N_rw_stepsize <- 10
+  Nproposal <- sample(x = (N-N_rw_stepsize):(N+N_rw_stepsize), size = 1)
+  if (Nproposal >= partition$ksize){
+    target_proposal <- lfactorial(Nproposal) - lfactorial(Nproposal - partition$ksize) - (n+g) * log(Nproposal)
+    target_current <- lfactorial(N) - lfactorial(N - partition$ksize) - (n+g) * log(N)
+    logu <- log(runif(1))
+    if (logu < (target_proposal - target_current)){
+      N <- Nproposal
+    }
   }
+  Naccept <- Naccept + 1
+  N_history[imcmc] <- N
+  ## To add: update of beta 
+  ##
+  ## alpha <- expit(beta)
+  ## partition_ll <- compute_loglikelihood_clusters(partition, theta, V, dimV, alpha)
+  ## To add: update of beta0 
+  ##
+  ## update of theta
+  ## note: prior on theta = uniform on simplex, equivalently Dirichlet(1,1,...,1)
+  for (field in 1:p){
+    ## theta associated with field
+    theta_current <- theta[[field]]
+    ## propose modification using Dirichlet proposal
+    theta_scale <- 1000
+    theta_proposal <- rgamma(n = dimV[field], shape = theta_current * theta_scale, rate = 1)
+    theta_proposal <- theta_proposal / sum(theta_proposal)
+    ## compute Dirichlet log density
+    dirichlet1 <- function(x, alpha) {
+      logD <- sum(lgamma(alpha)) - lgamma(sum(alpha))
+      s <- (alpha - 1) * log(x)
+      s <- ifelse(alpha == 1 & x == 0, -Inf, s)
+      return(sum(s) - logD)
+    }
+    ## compute MH ratio
+    proposal_logratio <- dirichlet1(theta_current, theta_proposal * theta_scale) - dirichlet1(theta_proposal, theta_current * theta_scale)
+    partition_ll_field_proposal <- compute_loglikelihood_onefield(field-1, partition, theta_proposal, V, dimV, alpha)
+    mh_ratio <- sum(partition_ll_field_proposal[partition$clsize>0]) - sum((partition_ll[,field])[partition$clsize>0]) + proposal_logratio
+    ## accept proposal or not
+    if (log(runif(1)) < mh_ratio){
+      theta[[field]] <- theta_proposal
+      partition_ll[,field] <- partition_ll_field_proposal
+    }
+  }
+  theta1_history[imcmc,] <- theta[[1]]
+  #
 }
-Naccept <- Naccept + 1
-## update of beta 
-
-alpha <- expit(beta)
-## update of beta0 
-
-
-
+ 
+matplot(N_history, type = 'l')
+matplot(theta1_history[,1:10], type = 'l')
+ 
