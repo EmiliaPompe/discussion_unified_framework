@@ -125,6 +125,7 @@ logTargetDensityBetaPrimeNonCentred <- function(beta_diff, theta_vector, v_vecto
 #------------------------CoupleBetaPrimeNonCentred (non-centred parametrisation)
 #
 # current_beta_prime_diff_1 and current_beta_prime_diff_2 are current values of differences beta_prime_{j,l} - beta_{0,l} for both chains
+# (hence current_beta_prime_diff_1 and current_beta_prime_diff_2 are vectors of length 1)
 # current_beta_prime_diff_ident is TRUE/FALSE defining if the above variables are equal
 # proposal_sd is the proposal standard deviation used for proposing a new point
 # the remaining variables are as above for both chains
@@ -142,7 +143,7 @@ CoupleBetaPrimeNonCentred <- function(current_beta_prime_diff_1, current_beta_pr
   }
   
   # drawing proposals from maximal coupling
-  max_coupling <- rnorm_reflectionmxax(mean(current_beta_prime_diff_1), mean(current_beta_prime_diff_2), proposal_sd)
+  max_coupling <- rnorm_reflectionmxax(current_beta_prime_diff_1, current_beta_prime_diff_2, proposal_sd)
   
   # common random number for acceptance/rejection
   logu <- log(runif(1))
@@ -183,7 +184,7 @@ SingleBetaPrimeNonCentred <- function(current_beta_prime_diff,
     logTargetDensityBetaPrimeNonCentred(beta_diff, theta_vector, v_vector, beta_0, s_sq)
   }
   
-  current_state <- mean(current_beta_prime_diff)
+  current_state <- current_beta_prime_diff
   # common random number for acceptance/rejection
   logu <- log(runif(1))
   current_density <- logTargetDensity(current_state)
