@@ -117,8 +117,38 @@ coupleBeta0NonCentred <- function(beta_prime_list_diffs_1, beta_prime_list_diffs
 }
 
 
+# analogous function as above but for a single kernel
+
+SingleBeta0NonCentred <- function(beta_prime_list_diffs,
+                                  previous_beta_0,
+                                  mu_0, s_0_sq, s_sq){
+  
+  result <- lapply(1:length(beta_prime_list_diffs), function(l){
+    
+      # calculating beta_prime as previous_beta_0 + new differences
+      beta_prime <- previous_beta_0[l] + beta_prime_list_diffs[[l]]
+      
+      # using the formula for the posterior in the Normal-Normal model
+      common_var <- 1/(1/s_0_sq + length(beta_prime_list_diffs[[l]])/s_sq)
+      mu <- common_var*(mu_0/s_0_sq + sum(beta_prime)/s_sq)
+      return(rnorm(1,mu, sqrt(common_var)))
+      
+  })
+  
+  
+  return(list(beta_0 = unlist(result)))
+  
+}
+
+#---------------testing
+#
 # coupleBeta0(beta_prime_list_1 =list(rnorm(2), rnorm(3)), 
 #             beta_prime_list_2 = list(rnorm(2), rnorm(2)),
 #             mu_0 = 1, 
 #             s_0_sq = 1, s_sq = 1)
 # 
+
+# SingleBeta0NonCentred(beta_prime_list_diffs = list(rnorm(10), rnorm(10)),
+#                                   previous_beta = rnorm(2),
+#                                   mu_0=1, s_0_sq=1, s_sq=1)
+#   
