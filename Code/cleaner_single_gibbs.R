@@ -26,7 +26,7 @@ expit <- function(x) exp(x)/(1+exp(x))
 ## important for indexing: entries of V should start at zero, following C convention
 V <- V - 1 
 ## let's work with a small data set for the moment
-V <- V[1:250,1:4]
+V <- V[1:50,1:2]
 ## numbers of possibilities for each column; denoted by M_ell in the overleaf document
 dimV <- as.integer(dimV[1:ncol(V)])
 ## define dimensions of V
@@ -35,7 +35,7 @@ p <- dim(V)[2]
 ## prior parameter for N 
 g <- 1.02
 ## number of MCMC iterations
-nmcmc <- 1e3
+nmcmc <- 1e4
 ## whether to print some things during the run, or not
 verbose <- TRUE
 ## record history of certain components
@@ -64,22 +64,25 @@ s  <- sqrt(0.5)
 beta <- matrix(NA, nrow = n, ncol = p)
 for (field in 1:p) beta[,field] <- rnorm(n, beta0[field], s)
 alpha <- expit(beta)
+alpha[which(partition$clsize==0),] <- -Inf
 ## initial frequencies of categories, initial values
 theta <- ALPHA[1:p]
 ## compute log-likelihood associated with each cluster
 partition_ll <- compute_loglikelihood_clusters(partition, theta, V, dimV, alpha)
 ## initialize quantities to monitor
 Naccept <- 0
+thetaaccept <- rep(0, p)
 ## next iterate updates in the Gibbs sampler
 for (imcmc in 1:nmcmc){
   if (verbose && (imcmc %% 1 == 0)) cat("iteration", imcmc, "/", nmcmc, "\n")
   ## update of eta
   # print(N)
   # print(length(unique(eta)))
-  update_eta_result <- update_eta(eta, partition, partition_ll, theta, V, dimV, alpha, N)
+  update_eta_result <- update_eta(eta, partition, partition_ll, theta, V, dimV, alpha, N, beta0, s)
   eta <- update_eta_result$eta
   partition_ll <- update_eta_result$clusterloglikelihoods
   partition <- update_eta_result$clustering
+  alpha <- update_eta_result$alpha
   ## relabel 
   relabel_result <- relabel2(eta, partition)
   eta <- relabel_result$eta
@@ -89,7 +92,7 @@ for (imcmc in 1:nmcmc){
   alpha <- alpha[relabel_result$old_to_new,]
   ## update of N
   ## random walk proposal
-  N_rw_stepsize <- 5
+  N_rw_stepsize <- 20
   # if (verbose) print("update N")
   Nproposal <- sample(x = (N-N_rw_stepsize):(N+N_rw_stepsize), size = 1)
   if (Nproposal >= partition$ksize){
@@ -108,14 +111,15 @@ for (imcmc in 1:nmcmc){
   ## alpha <- expit(beta)
   ## partition_ll <- compute_loglikelihood_clusters(partition, theta, V, dimV, alpha)
   ## To add: update of beta0 
-  ##
+  
   ## update of theta
   ## note: prior on theta = uniform on simplex, equivalently Dirichlet(1,1,...,1)
+  ## but for numerical stability we remove the part close to the boundary 
   for (field in 1:p){
     ## theta associated with field
     theta_current <- theta[[field]]
     ## propose modification using Dirichlet proposal
-    theta_scale <- 1000
+    theta_scale <- 450
     theta_proposal <- rgamma(n = dimV[field], shape = theta_current * theta_scale, rate = 1)
     theta_proposal <- theta_proposal / sum(theta_proposal)
     ## compute Dirichlet log density
@@ -126,13 +130,22 @@ for (imcmc in 1:nmcmc){
       return(sum(s) - logD)
     }
     ## compute MH ratio
-    proposal_logratio <- dirichlet1(theta_current, theta_proposal * theta_scale) - dirichlet1(theta_proposal, theta_current * theta_scale)
-    partition_ll_field_proposal <- compute_loglikelihood_onefield(field-1, partition, theta_proposal, V, dimV, alpha)
-    mh_ratio <- sum(partition_ll_field_proposal[partition$clsize>0]) - sum((partition_ll[,field])[partition$clsize>0]) + proposal_logratio
-    ## accept proposal or not
-    if (log(runif(1)) < mh_ratio){
-      theta[[field]] <- theta_proposal
-      partition_ll[,field] <- partition_ll_field_proposal
+    if (any((theta_proposal < 1e-10) | (theta_proposal > (1-1e-10)))){
+      ## reject move as too close to boundary
+      # print("reject because too close to boundary")
+      # print(theta_current)
+      # print(theta_proposal)
+    } else {
+      proposal_logratio <- dirichlet1(theta_current, theta_proposal * theta_scale) - dirichlet1(theta_proposal, theta_current * theta_scale)
+      # print(proposal_logratio)
+      partition_ll_field_proposal <- compute_loglikelihood_onefield(field-1, partition, theta_proposal, V, dimV, alpha)
+      mh_ratio <- sum(partition_ll_field_proposal[partition$clsize>0]) - sum((partition_ll[,field])[partition$clsize>0]) + proposal_logratio
+      ## accept proposal or not
+      if (log(runif(1)) < mh_ratio){
+        theta[[field]] <- theta_proposal
+        partition_ll[,field] <- partition_ll_field_proposal
+        thetaaccept[field] <- thetaaccept[field] + 1
+      }
     }
   }
   theta1_history[imcmc,] <- theta[[1]]
@@ -140,8 +153,23 @@ for (imcmc in 1:nmcmc){
 }
  
 cat(Naccept/nmcmc, "\n")
+cat(thetaaccept/nmcmc, "\n")
+
 matplot(N_history, type = 'l')
-matplot(theta1_history[,1:10], type = 'l')
+
+matplot(theta1_history[,1:2], type = 'l')
+abline(h = ALPHA[[1]][1:2])
 
 # pairs(theta1_history[200:nmcmc,1:10])
+# hist(N_history[(nmcmc/10):nmcmc])
+
+hist(theta1_history[(nmcmc/10):nmcmc,1])
+abline(v = ALPHA[[1]][1])
+
+hist(theta1_history[(nmcmc/10):nmcmc,2])
+abline(v = ALPHA[[1]][2])
+
+hist(theta1_history[(nmcmc/10):nmcmc,3])
+abline(v = ALPHA[[1]][3])
+
  

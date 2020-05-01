@@ -22,12 +22,6 @@ NumericMatrix compute_loglikelihood_clusters(const List & clustering,
   int n = V.nrow();
   int p = V.ncol();
   // 
-  // int cumdime[p]; 
-  // cumdime[0] = 0;
-  // for (int l=1; l<p; l++){
-  //   cumdime[l] = cumdime[l-1] + dimV[l-1];
-  // }  
-  //  
   NumericMatrix clusterloglikelihoods(n, p);
   std::fill(clusterloglikelihoods.begin(), clusterloglikelihoods.end(), R_NegInf);
   // loop over non-empty clusters and compute associated likelihoods
@@ -101,13 +95,6 @@ NumericVector compute_loglikelihood_onefield(int field,
   IntegerVector clsize = clustering["clsize"];
   IntegerMatrix clmembers = clustering["clmembers"];
   int n = V.nrow();
-  // int p = V.ncol();
-  // 
-  // int cumdime[p]; 
-  // cumdime[0] = 0;
-  // for (int l=1; l<p; l++){
-  //   cumdime[l] = cumdime[l-1] + dimV[l-1];
-  // }  
   NumericVector clusterloglikelihoods_onefield(n);
   std::fill(clusterloglikelihoods_onefield.begin(), clusterloglikelihoods_onefield.end(), R_NegInf);
   // loop over non-empty clusters and compute associated likelihoods
