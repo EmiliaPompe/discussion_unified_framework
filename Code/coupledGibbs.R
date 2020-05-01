@@ -62,14 +62,14 @@ coupleGibbs <- function(nMCMC, N1, N2, g, theta1, theta2, alpha1, alpha2, n, lag
     k2_chain[iter - lag] <- ksize2
     ## update alpha 
     ## update theta
-    # couple_theta <- coupleTheta(theta1, theta2,  partition1, partition2, alpha1, alpha2)
-    # theta1 <- couple_theta$theta1
-    # theta2 <- couple_theta$theta2
-    # if(any(theta1 == 0) | any(theta2 == 0)){
-    #   print(paste('couple_theta gives 0 at iteration',iter,'\n',sep = " "))
-    # }
-    # cl_log_lik1 <- compute_loglikelihood_clusters(partition1, theta1, V, dimV, alpha1)
-    # cl_log_lik2 <- compute_loglikelihood_clusters(partition2, theta2, V, dimV, alpha2)
+    couple_theta <- coupleTheta(theta1, theta2,  partition1, partition2, alpha1, alpha2)
+    theta1 <- couple_theta$theta1
+    theta2 <- couple_theta$theta2
+    if(any(theta1 == 0) | any(theta2 == 0)){
+      print(paste('couple_theta gives 0 at iteration',iter,'\n',sep = " "))
+    }
+    cl_log_lik1 <- compute_loglikelihood_clusters(partition1, theta1, V, dimV, alpha1)
+    cl_log_lik2 <- compute_loglikelihood_clusters(partition2, theta2, V, dimV, alpha2)
     theta1_chain[,iter] <- theta1
     theta2_chain[,iter - lag] <- theta2
     ## update N 
