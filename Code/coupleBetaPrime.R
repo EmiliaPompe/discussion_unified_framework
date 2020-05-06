@@ -12,7 +12,7 @@ source('couple_normal.R')
 
 
 logTargetDensityBetaPrime <- function(beta, theta_vector, v_vector, beta_0, s_sq){
-  logPrior <- dnorm(beta, beta_0, sqrt(s_sq))
+  logPrior <- dnorm(beta, beta_0, sqrt(s_sq), log = TRUE)
   # defining alpha as in the bottom of page 2 of our write-up
   alpha <- exp(beta)/(1+ exp(beta))
 
@@ -97,7 +97,10 @@ CoupleBetaPrime <- function(current_beta_prime_1, current_beta_prime_2,
 
 logTargetDensityBetaPrimeNonCentred <- function(beta_diff, theta_vector, v_vector, beta_0, s_sq){
   beta <- beta_0 + beta_diff
-  logPrior <- dnorm(beta, beta_0, sqrt(s_sq))
+  logPrior <- dnorm(beta, beta_0, sqrt(s_sq), log = TRUE)
+  if(length(v_vector)==1){
+    return(logPrior)
+  }
   # defining alpha as in the bottom of page 2 of our write-up
   alpha <- exp(beta)/(1+ exp(beta))
   
@@ -129,43 +132,56 @@ logTargetDensityBetaPrimeNonCentred <- function(beta_diff, theta_vector, v_vecto
 # current_beta_prime_diff_ident is TRUE/FALSE defining if the above variables are equal
 # proposal_sd is the proposal standard deviation used for proposing a new point
 # the remaining variables are as above for both chains
-CoupleBetaPrimeNonCentred <- function(current_beta_prime_diff_1, current_beta_prime_diff_2,
+CoupleBetaPrimeNonCentred <- function(current_beta_prime_diff_1,
+                                      current_beta_prime_diff_2,
                                       current_beta_prime_diff_ident,
-                                      theta_vector_1, theta_vector_2, 
-                                      v_vector_1, v_vector_2, 
-                                      beta_0_1, beta_0_2,
-                                      s_sq, proposal_sd){
-  logTargetDensity1 <- function(beta_diff){
-    logTargetDensityBetaPrimeNonCentred(beta_diff, theta_vector_1, v_vector_1, beta_0_1, s_sq)
-  }
-  logTargetDensity2 <- function(beta_diff){
-    logTargetDensityBetaPrimeNonCentred(beta_diff, theta_vector_2, v_vector_2, beta_0_2, s_sq)
-  }
-  
-  # drawing proposals from maximal coupling
-  max_coupling <- rnorm_reflectionmxax(current_beta_prime_diff_1, current_beta_prime_diff_2, proposal_sd)
-  
-  # common random number for acceptance/rejection
-  logu <- log(runif(1))
-  current_density_1 <- logTargetDensity1(current_beta_prime_diff_1)
-  current_density_2 <- logTargetDensity2(current_beta_prime_diff_2)
-  proposed_density_1 <- logTargetDensity1(max_coupling$xy[1])
-  current_density_2 <- logTargetDensity2(max_coupling$xy[2])
-  
-  accept1 <- (logu < (proposed_density_1 - current_density_1))
-  if(accept1){
-    beta_prime_1 <- max_coupling$xy[1] 
+                                      theta_vector_1,
+                                      theta_vector_2, 
+                                      v_vector_1,
+                                      v_vector_2, 
+                                      beta_0_1,
+                                      beta_0_2,
+                                      s_sq,
+                                      proposal_sd){
+  # in case both clusters have size 1 we sample from the prior (this immediatly gives us coupling)
+  if(max(c(length(v_vector_1), length(v_vector_2)))==1){
+    beta_prime_1 <- rnorm(1, 0, sqrt(s_sq))
+    beta_prime_2 <- beta_prime_1
+    ident <- TRUE
   }else{
-    beta_prime_1 <- max_coupling$xy[1]
-  }
-  accept2 <- (logu < (proposed_density_1 - current_density_1))
-  
-  # checking if the coupling has already happened
-  ident <- max_coupling$identical && accept1 && accept2
-  
-  # in case they were previously coupled and now both moves are rejected
-  if((!ident) && current_beta_prime_diff_ident){
-    ident <- (!accept1) && (!accept2)
+    
+    logTargetDensity1 <- function(beta_diff){
+      logTargetDensityBetaPrimeNonCentred(beta_diff, theta_vector_1, v_vector_1, beta_0_1, s_sq)
+    }
+    logTargetDensity2 <- function(beta_diff){
+      logTargetDensityBetaPrimeNonCentred(beta_diff, theta_vector_2, v_vector_2, beta_0_2, s_sq)
+    }
+    
+    # drawing proposals from maximal coupling
+    max_coupling <- rnorm_reflectionmxax(current_beta_prime_diff_1, current_beta_prime_diff_2, proposal_sd)
+    
+    # common random number for acceptance/rejection
+    logu <- log(runif(1))
+    current_density_1 <- logTargetDensity1(current_beta_prime_diff_1)
+    current_density_2 <- logTargetDensity2(current_beta_prime_diff_2)
+    proposed_density_1 <- logTargetDensity1(max_coupling$xy[1])
+    current_density_2 <- logTargetDensity2(max_coupling$xy[2])
+    
+    accept1 <- (logu < (proposed_density_1 - current_density_1))
+    if(accept1){
+      beta_prime_1 <- max_coupling$xy[1] 
+    }else{
+      beta_prime_1 <- max_coupling$xy[1]
+    }
+    accept2 <- (logu < (proposed_density_1 - current_density_1))
+    
+    # checking if the coupling has already happened
+    ident <- max_coupling$identical && accept1 && accept2
+    
+    # in case they were previously coupled and now both moves are rejected
+    if((!ident) && current_beta_prime_diff_ident){
+      ident <- (!accept1) && (!accept2)
+    }
   }
   
   return(list(beta_prime_diff_1 = beta_prime_1,
@@ -180,21 +196,27 @@ SingleBetaPrimeNonCentred <- function(current_beta_prime_diff,
                                       v_vector, 
                                       beta_0,
                                       s_sq, proposal_sd){
-  logTargetDensity <- function(beta_diff){
-    logTargetDensityBetaPrimeNonCentred(beta_diff, theta_vector, v_vector, beta_0, s_sq)
-  }
-  
-  current_state <- current_beta_prime_diff
-  # common random number for acceptance/rejection
-  logu <- log(runif(1))
-  current_density <- logTargetDensity(current_state)
-  proposed_state <- rnorm(1, current_state, proposal_sd)
-  proposed_density <- logTargetDensity(proposed_state)
-  
-  
-  accept <- (logu < (proposed_density - current_density))
-  if(accept){
-   current_state <- proposed_state  
+  # in this case we simply sample from the prior
+  if(length(v_vector)==1){
+    current_state <- rnorm(1, 0, sqrt(s_sq))
+  }else{
+    
+    logTargetDensity <- function(beta_diff){
+      logTargetDensityBetaPrimeNonCentred(beta_diff, theta_vector, v_vector, beta_0, s_sq)
+    }
+    
+    current_state <- current_beta_prime_diff
+    # common random number for acceptance/rejection
+    logu <- log(runif(1))
+    current_density <- logTargetDensity(current_state)
+    proposed_state <- rnorm(1, current_state, proposal_sd)
+    proposed_density <- logTargetDensity(proposed_state)
+    
+    
+    accept <- (logu < (proposed_density - current_density))
+    if(accept){
+      current_state <- proposed_state  
+    }
   }
   
   return(list(beta_prime_diff = current_state))
