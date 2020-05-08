@@ -7,7 +7,7 @@ using namespace Rcpp;
 // takes as argument 'clustering', as obtained e.g. with "init_clustering"
 // V is the observations (careful, values need to start at zero and go to values in Mvec-1)
 // Mvec which contains the number of possible categories in each column of V
-// a is alpha prime in the paper and given in a matrix with n row, one for each cluster, and ncol(V) columns
+// alpha is alpha prime in the paper and given in a matrix with n row, one for each cluster, and ncol(V) columns
 
 // [[Rcpp::export]]
 NumericMatrix compute_loglikelihood_all_clusters_all_fields_cpp(const List & clustering,

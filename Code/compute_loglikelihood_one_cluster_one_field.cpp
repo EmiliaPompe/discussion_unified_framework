@@ -12,7 +12,7 @@ using namespace Rcpp;
 // the R code
 
 // [[Rcpp::export]]
-double compute_loglikelihood_one_cluster_one_field(int l ,
+double compute_loglikelihood_one_cluster_one_field_cpp(int l ,
                                                    int icluster, 
                                                    const List & clustering,
                                                    const NumericVector & theta_l,
@@ -28,6 +28,7 @@ double compute_loglikelihood_one_cluster_one_field(int l ,
     return log_likelihood;
   } else {
     // compute likelihood recursively over members of cluster
+    log_likelihood = 0.0;
     // first member (associated row in V)
     int j = clmembers(icluster,0);
     // recall theta_l[ V(j,l)] is theta_{l, v(j,l)} in the paper
@@ -55,8 +56,8 @@ double compute_loglikelihood_one_cluster_one_field(int l ,
           logprod += log((1 - a) * theta_l[ V(q,l)]);
           // next we need to define exp(logprod) + exp(cl_likelihood_field(l))
           // Rcout << "adds second term to l-th term" << logprod <<"\n";
-          double max_logs = std::max(logprod, cl_likelihood_field[icluster]);
-          cl_likelihood_field[icluster] = max_logs + log(exp(logprod - max_logs) + exp(cl_likelihood_field[icluster] - max_logs));
+          double max_logs = std::max(logprod, log_likelihood);
+          log_likelihood = max_logs + log(exp(logprod - max_logs) + exp(log_likelihood - max_logs));
       }
     }
     return log_likelihood;  

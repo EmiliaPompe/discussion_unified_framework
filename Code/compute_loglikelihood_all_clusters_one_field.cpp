@@ -31,6 +31,7 @@ NumericVector compute_loglikelihood_all_clusters_one_field_cpp(int l ,
       // do nothing
     } else {
       // compute likelihood recursively over members of cluster
+      cl_likelihood_field[icluster] = 0.0;
       // first member (associated row in V)
       int j = clmembers(icluster,0);
       // recall theta_l[ V(j,l)] is theta_{l, v(j,l)} in the paper
