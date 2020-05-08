@@ -10,7 +10,7 @@
 # eta = {1,2,3,2,4} (increasing order of first appearance for each value of eta)
 # and associated u'_z = {1,2,3,4} and Z = {1|24|3|5} as before.
 
-relabel <- function(eta){
+relabel <- function(eta, clustering){
   ## returns new labels and the correspondence between old labels and new labels 
   n <- length(eta)
   old_to_new <- c(1:n) ## maps old cluster index to new cluster index
@@ -48,7 +48,7 @@ relabel2 <- function(eta, clustering){
       cluster_members <- clustering$clmembers[icluster,1:clustering$clsize[icluster]]
       ## give as label smallest of these indices
       cluster_label <- min(cluster_members)
-      new_eta[cluster_members+1] <- cluster_label
+      new_eta[cluster_members+1] <- cluster_label + 1
       permutation[icluster] <- cluster_label + 1
     }
   }

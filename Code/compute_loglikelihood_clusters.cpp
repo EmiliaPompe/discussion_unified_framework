@@ -10,7 +10,7 @@ using namespace Rcpp;
 // a is alpha prime in the paper and given in a matrix with n row, one for each cluster, and ncol(V) columns
 
 // [[Rcpp::export]]
-NumericMatrix compute_loglikelihood_clusters(const List & clustering,
+NumericMatrix compute_loglikelihood_clusters_cpp(const List & clustering,
                                              const List & theta,
                                              const IntegerMatrix & V,
                                              const IntegerVector & dimV,
@@ -23,7 +23,7 @@ NumericMatrix compute_loglikelihood_clusters(const List & clustering,
   int p = V.ncol();
   // 
   NumericMatrix clusterloglikelihoods(n, p);
-  std::fill(clusterloglikelihoods.begin(), clusterloglikelihoods.end(), R_NegInf);
+  std::fill(clusterloglikelihoods.begin(), clusterloglikelihoods.end(), NA_REAL);
   // loop over non-empty clusters and compute associated likelihoods
   for (int icluster = 0; icluster < n; icluster ++){
     // if empty cluster, do nothing
@@ -86,7 +86,7 @@ NumericMatrix compute_loglikelihood_clusters(const List & clustering,
 // a is alpha prime in the paper and given in a matrix with n row, one for each cluster, and ncol(V) columns
 
 // [[Rcpp::export]]
-NumericVector compute_loglikelihood_onefield(int field, 
+NumericVector compute_loglikelihood_onefield_cpp(int field, 
                                     const List & clustering,
                                     const NumericVector & theta_field,
                                     const IntegerMatrix & V,

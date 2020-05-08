@@ -13,7 +13,7 @@ using namespace Rcpp;
 //    ... the rest of the matrix 'clmembers' is filled with '-1'
 
 // [[Rcpp::export]]
-List init_clustering(const IntegerVector & eta) {
+List init_clustering_cpp(const IntegerVector & eta) {
   int n = eta.size();
   int ksize = 0;
   IntegerVector clsize (n, 0);

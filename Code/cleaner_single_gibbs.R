@@ -7,8 +7,43 @@ library(Rcpp)
 library(tidyverse)
 ## set graphical themes
 theme_set(theme_minimal())
-## load data
-source("getData.R")
+## load data 'V' and defines n and p, the dimensions of V
+library(RecordLinkage)
+data(RLdata500)
+myRLDATA=cbind(id=identity.RLdata500,RLdata500)
+M1=matrix(unlist(strsplit(soundex(myRLDATA$fname_c1),split="")),ncol=4,byrow=TRUE)
+M2=matrix(unlist(strsplit(soundex(myRLDATA$lname_c1),split="")),ncol=4,byrow=TRUE)
+M3=matrix(unlist(strsplit(as.character(myRLDATA[,6]),split="")),ncol=4,byrow=TRUE)
+M4=matrix( character(nrow(myRLDATA)*2),ncol=2)
+for (i in 1:2) M4[,i]=as.character(myRLDATA[,6+i])
+
+V=cbind(M1,M2,M3,M4)
+V=as.data.frame(V)
+p=ncol(V);
+
+fieldfrequencies=list()
+for (l in 1:p) fieldfrequencies[[l]]=table(V[,l])/nrow(V)
+Mvec <- c()
+for (l in 1:p) {
+  Mvec[l]=length(levels(V[,l]))
+  V[,l]=as.numeric(V[,l])
+}
+V=as.matrix(V)
+# V is a matrix of n * p
+# entries are values in 1:M_l, where M_l is the number of possible categories in field l
+# and field l in in 1:p
+# Vector 'Mvec' has entries 'M_l' for l in 1:p
+
+## let's subset the data 
+V <- V[1:50,1:2]
+## define dimensions of V
+n <- dim(V)[1]
+p <- dim(V)[2]
+
+## get some 'ground truth'
+# MATCH=outer(myRLDATA$id, myRLDATA$id, FUN="==")
+# MATCH=MATCH[upper.tri(MATCH)]
+
 ## source functions
 ## to relabel 
 source("relabel.R")
@@ -21,68 +56,81 @@ sourceCpp("update_eta.cpp")
 ## define logit and expit transformation
 logit <- function(x) log(x/(1-x))
 expit <- function(x) exp(x)/(1+exp(x))
-##
-## The data is the matrix V
-## important for indexing: entries of V should start at zero, following C convention
-V <- V - 1 
-## let's work with a small data set for the moment
-V <- V[1:50,1:2]
-## numbers of possibilities for each column; denoted by M_ell in the overleaf document
-dimV <- as.integer(dimV[1:ncol(V)])
-## define dimensions of V
-n <- dim(V)[1]
-p <- dim(V)[2]
+
+
+## hyper parameter specification
 ## prior parameter for N 
 g <- 1.02
+## prior parameter for beta0
+m0 <- logit(0.01)
+s0 <- sqrt(0.1)
+## prior parameter for beta given beta0
+s  <- sqrt(0.5)
+
 ## number of MCMC iterations
 nmcmc <- 1e4
+## there should be update frequencies ... 
+
 ## whether to print some things during the run, or not
 verbose <- TRUE
+
 ## record history of certain components
 N_history <- rep(NA, nmcmc)
-theta1_history <- matrix(NA, nrow = nmcmc, ncol = dimV[1])
-##
+theta1_history <- matrix(NA, nrow = nmcmc, ncol = Mvec[1])
+
 ## The state of the Markov chain  is (eta, N, b', b0, theta)
-## First we initialize the chains
-## initial N
+
+## Initialization of the chains
 ## initial eta 
-eta <- sample(x = 1:n, size = n, replace = T) - 1
-N <- 2 * length(unique(eta))
-partition <- init_clustering(eta)
+eta <- sample(x = 1:n, size = n, replace = T)
+## initial N
+N <- max(n, 2 * length(unique(eta)))
+## 
+partition <- init_clustering_cpp(eta-1)
 relabel_result <- relabel2(eta, partition)
+# clusteval::cluster_similarity(eta, relabel_result$eta)
 eta <- relabel_result$eta
 partition$clsize <- partition$clsize[relabel_result$old_to_new] 
 partition$clmembers <- partition$clmembers[relabel_result$old_to_new,]
-# clusteval::cluster_similarity(eta, relabel_result$eta)
-# identical(init_clustering(relabel_result$eta), relabel_result$clustering)
-m0 <- logit(0.01)
-s0 <- sqrt(0.1)
 ## initial b0
 beta0 <- rnorm(p, m0, s0)
-s  <- sqrt(0.5)
 ## initial beta
-beta <- matrix(NA, nrow = n, ncol = p)
-for (field in 1:p) beta[,field] <- rnorm(n, beta0[field], s)
-alpha <- expit(beta)
-alpha[which(partition$clsize==0),] <- -Inf
+beta_diff <- matrix(NA, nrow = n, ncol = p)
+for (field in 1:p) beta_diff[,field] <- rnorm(n, 0, s)
+# beta_diff[partition$clsize==0,] <- NA
+## create alpha from beta_diff and beta_0
+beta_to_alpha <- function(beta_diff, beta_0){
+  alpha <- beta_diff 
+  for(i in 1:nrow(beta_diff)){
+    # if(!is.na(beta_diff[i,1])){
+    exp_beta <- exp(beta_0 + beta_diff[i,])
+    alpha[i,] <- exp_beta/(exp_beta+1)
+    # }
+  }
+  return(alpha)
+}
+##
+alpha <- beta_to_alpha(beta_diff, beta0)
 ## initial frequencies of categories, initial values
-theta <- ALPHA[1:p]
+theta <- fieldfrequencies[1:p]
+## sanity check
+all(Mvec[1:p] == sapply(theta, length))
 ## compute log-likelihood associated with each cluster
-partition_ll <- compute_loglikelihood_clusters(partition, theta, V, dimV, alpha)
+partition_ll <- compute_loglikelihood_clusters_cpp(partition, theta, V-1, Mvec[1:p], alpha)
 ## initialize quantities to monitor
-Naccept <- 0
-thetaaccept <- rep(0, p)
+N_accept <- 0
+theta_accept <- rep(0, p)
 ## next iterate updates in the Gibbs sampler
 for (imcmc in 1:nmcmc){
   if (verbose && (imcmc %% 1 == 0)) cat("iteration", imcmc, "/", nmcmc, "\n")
   ## update of eta
   # print(N)
   # print(length(unique(eta)))
-  update_eta_result <- update_eta(eta, partition, partition_ll, theta, V, dimV, alpha, N, beta0, s)
+  update_eta_result <- update_eta_cpp(eta-1, partition, partition_ll, theta, V-1, Mvec[1:p], alpha, N, beta0, s)
   eta <- update_eta_result$eta
   partition_ll <- update_eta_result$clusterloglikelihoods
   partition <- update_eta_result$clustering
-  alpha <- update_eta_result$alpha
+  # alpha <- update_eta_result$alpha
   ## relabel 
   relabel_result <- relabel2(eta, partition)
   eta <- relabel_result$eta
@@ -101,15 +149,14 @@ for (imcmc in 1:nmcmc){
     logu <- log(runif(1))
     if (logu < (target_proposal - target_current)){
       N <- Nproposal
-      Naccept <- Naccept + 1
+      N_accept <- N_accept + 1
     }
   }
   N_history[imcmc] <- N
   # if (verbose) print("update N done")
-  ## To add: update of beta 
-  ##
+  ## To add: update of alpha <-> beta and beta0 
+  
   ## alpha <- expit(beta)
-  ## partition_ll <- compute_loglikelihood_clusters(partition, theta, V, dimV, alpha)
   ## To add: update of beta0 
   
   ## update of theta
@@ -120,7 +167,7 @@ for (imcmc in 1:nmcmc){
     theta_current <- theta[[field]]
     ## propose modification using Dirichlet proposal
     theta_scale <- 450
-    theta_proposal <- rgamma(n = dimV[field], shape = theta_current * theta_scale, rate = 1)
+    theta_proposal <- rgamma(n = Mvec[field], shape = theta_current * theta_scale, rate = 1)
     theta_proposal <- theta_proposal / sum(theta_proposal)
     ## compute Dirichlet log density
     dirichlet1 <- function(x, alpha) {
@@ -138,13 +185,13 @@ for (imcmc in 1:nmcmc){
     } else {
       proposal_logratio <- dirichlet1(theta_current, theta_proposal * theta_scale) - dirichlet1(theta_proposal, theta_current * theta_scale)
       # print(proposal_logratio)
-      partition_ll_field_proposal <- compute_loglikelihood_onefield(field-1, partition, theta_proposal, V, dimV, alpha)
+      partition_ll_field_proposal <- compute_loglikelihood_onefield_cpp(field-1, partition, theta_proposal, V - 1, Mvec[1:p], alpha)
       mh_ratio <- sum(partition_ll_field_proposal[partition$clsize>0]) - sum((partition_ll[,field])[partition$clsize>0]) + proposal_logratio
       ## accept proposal or not
       if (log(runif(1)) < mh_ratio){
         theta[[field]] <- theta_proposal
         partition_ll[,field] <- partition_ll_field_proposal
-        thetaaccept[field] <- thetaaccept[field] + 1
+        theta_accept[field] <- theta_accept[field] + 1
       }
     }
   }
@@ -152,24 +199,24 @@ for (imcmc in 1:nmcmc){
   #
 }
  
-cat(Naccept/nmcmc, "\n")
-cat(thetaaccept/nmcmc, "\n")
+cat(N_accept/nmcmc, "\n")
+cat(theta_accept/nmcmc, "\n")
 
 matplot(N_history, type = 'l')
 
 matplot(theta1_history[,1:2], type = 'l')
-abline(h = ALPHA[[1]][1:2])
+abline(h = fieldfrequencies[[1]][1:2])
 
 # pairs(theta1_history[200:nmcmc,1:10])
 # hist(N_history[(nmcmc/10):nmcmc])
 
 hist(theta1_history[(nmcmc/10):nmcmc,1])
-abline(v = ALPHA[[1]][1])
+abline(v = fieldfrequencies[[1]][1])
 
 hist(theta1_history[(nmcmc/10):nmcmc,2])
-abline(v = ALPHA[[1]][2])
+abline(v = fieldfrequencies[[1]][2])
 
 hist(theta1_history[(nmcmc/10):nmcmc,3])
-abline(v = ALPHA[[1]][3])
+abline(v = fieldfrequencies[[1]][3])
 
  

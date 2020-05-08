@@ -13,7 +13,7 @@ using namespace Rcpp;
 // * alpha, corruption probabilities for each field and cluster
 // * N
 // [[Rcpp::export]]
-List update_eta(const IntegerVector eta_previous,
+List update_eta_cpp(const IntegerVector eta_previous,
                 const List  clustering_previous,
                 const NumericMatrix ll_previous,
                 const List & theta,
@@ -58,9 +58,9 @@ List update_eta(const IntegerVector eta_previous,
       // decrement cluster counter
       ksize --;
       // remove log-likelihoods associated with that cluster
-      std::fill(clusterloglikelihoods.row(label).begin(), clusterloglikelihoods.row(label).end(), R_NegInf);
+      std::fill(clusterloglikelihoods.row(label).begin(), clusterloglikelihoods.row(label).end(), NA_REAL);
       // remove corresponding alpha
-      std::fill(new_alpha.row(label).begin(), new_alpha.row(label).end(), R_NegInf);
+      // std::fill(new_alpha.row(label).begin(), new_alpha.row(label).end(), R_NegInf);
     } else {
       // otherwise need to update log-likelihood associated with what's left in the non-empty cluster
       // for this we use equation (6), which, rearranged, gives the likelihood
@@ -88,7 +88,6 @@ List update_eta(const IntegerVector eta_previous,
       //     clusterloglikelihoods(label,l) = eval_2;
       //   }
       // }
-      
       // alternatively we can recompute likelihood of cluster from scratch,
       // which seems more numerically stable
       NumericVector cl_likelihood_field(p);
@@ -173,7 +172,7 @@ List update_eta(const IntegerVector eta_previous,
       if (clsize[icluster] == 0){
         // i.e. P(eta[ieta] = q) where q is the label of a new block
         logproba_eta[icluster] = sum(uponetajoining_loglikelihood.row(icluster));
-        logproba_eta[icluster] += (log(N-ksize) - log(n-ksize)); // (this is the prior)
+        logproba_eta[icluster] += (log(N-ksize)); // CAREFUL CHECK - log(n-ksize)); // (this is the prior)
         // note that when N = ksize this should be -Inf so it becomes impossible to create a new cluster 
       } else {
         logproba_eta[icluster] = sum(uponetajoining_loglikelihood.row(icluster) - clusterloglikelihoods.row(icluster));
@@ -216,10 +215,10 @@ List update_eta(const IntegerVector eta_previous,
     if (clsize[draw] == 0){ 
       ksize += 1;
       // if new cluster, draw new alpha from prior 
-      NumericVector zz = rnorm(p);
-      zz = beta0 + s * zz;
-      zz = exp(zz)/(1+exp(zz));
-      new_alpha.row(draw) = zz;
+      // NumericVector zz = rnorm(p);
+      // zz = beta0 + s * zz;
+      // zz = exp(zz)/(1+exp(zz));
+      // new_alpha.row(draw) = zz;
     }
     // adds index in matrix storing members of each cluster
     clmembers(draw, clsize[draw]) = ieta;
