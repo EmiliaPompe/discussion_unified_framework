@@ -1,4 +1,4 @@
-### this function relabels the lambda's such that partitions are fixed
+### this function relabels the eta's such that partitions are fixed
 ### but labels are sorted according to first appearance
 ### for example:
 # One simple re-labeling would be to re-assign the labels by increasing order 
@@ -10,28 +10,26 @@
 # eta = {1,2,3,2,4} (increasing order of first appearance for each value of eta)
 # and associated u'_z = {1,2,3,4} and Z = {1|24|3|5} as before.
 
-
-# lambda <- c(1,4,3,4,2)
-relabel <- function(lambda){
+relabel <- function(eta){
   ## returns new labels and the correspondence between old labels and new labels 
-  n <- length(lambda)
-  iis <- c(1:n)
-  newlambda <- rep(NA, n)
+  n <- length(eta)
+  old_to_new <- c(1:n) ## maps old cluster index to new cluster index
+  new_eta <- rep(NA, n)
   visited <- rep(FALSE, n)
   changed <- rep(FALSE, n)
   currentCnt <- 1
-  for ( j in 1:n){
+  for (j in 1 : n){
     if(!visited[j]){
-      iis[lambda[j]] <- currentCnt
-      changed[lambda[j]] <- TRUE
-      clMembers <- which(lambda == lambda[j])
+      old_to_new[eta[j]] <- currentCnt
+      changed[eta[j]] <- TRUE
+      clMembers <- which(eta == eta[j])
       visited[clMembers] <- TRUE
-      newlambda[clMembers] <- currentCnt
+      new_eta[clMembers] <- currentCnt
       currentCnt <- currentCnt + 1
     }
   }
-  iis[!changed] <- c(currentCnt : n)
-  return(list(lambda = newlambda, iis = iis))
+  old_to_new[!changed] <- c(currentCnt : n)
+  return(list(eta = new_eta, old_to_new = old_to_new))
 }
 
 ## function to perform re-labeling
