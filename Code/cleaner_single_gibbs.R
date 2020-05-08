@@ -50,9 +50,14 @@ source("relabel.R")
 ## to define clustering/partition given vector of labels 'eta'
 sourceCpp("init_clustering.cpp")
 ## to compute log-likelihood of the different clusters in the partition
-sourceCpp("compute_loglikelihood_clusters.cpp")
+sourceCpp("compute_loglikelihood_all_clusters_all_fields.cpp")
+sourceCpp("compute_loglikelihood_all_clusters_one_field.cpp")
+sourceCpp("compute_loglikelihood_one_cluster_one_field.cpp")
 ## to perform full sweep of eta updates 
 sourceCpp("update_eta.cpp")
+## to perform full sweep of theta updates
+source("update_theta.R")
+concentration <- 10000 
 ## define logit and expit transformation
 logit <- function(x) log(x/(1-x))
 expit <- function(x) exp(x)/(1+exp(x))
@@ -116,7 +121,7 @@ theta <- fieldfrequencies[1:p]
 ## sanity check
 all(Mvec[1:p] == sapply(theta, length))
 ## compute log-likelihood associated with each cluster
-partition_ll <- compute_loglikelihood_clusters_cpp(partition, theta, V-1, Mvec[1:p], alpha)
+partition_ll <- compute_loglikelihood_all_clusters_all_fields_cpp(partition, theta, V-1, alpha)
 ## initialize quantities to monitor
 N_accept <- 0
 theta_accept <- rep(0, p)
@@ -161,42 +166,12 @@ for (imcmc in 1:nmcmc){
   
   ## update of theta
   ## note: prior on theta = uniform on simplex, equivalently Dirichlet(1,1,...,1)
-  ## but for numerical stability we remove the part close to the boundary 
-  for (field in 1:p){
-    ## theta associated with field
-    theta_current <- theta[[field]]
-    ## propose modification using Dirichlet proposal
-    theta_scale <- 450
-    theta_proposal <- rgamma(n = Mvec[field], shape = theta_current * theta_scale, rate = 1)
-    theta_proposal <- theta_proposal / sum(theta_proposal)
-    ## compute Dirichlet log density
-    dirichlet1 <- function(x, alpha) {
-      logD <- sum(lgamma(alpha)) - lgamma(sum(alpha))
-      s <- (alpha - 1) * log(x)
-      s <- ifelse(alpha == 1 & x == 0, -Inf, s)
-      return(sum(s) - logD)
-    }
-    ## compute MH ratio
-    if (any((theta_proposal < 1e-10) | (theta_proposal > (1-1e-10)))){
-      ## reject move as too close to boundary
-      # print("reject because too close to boundary")
-      # print(theta_current)
-      # print(theta_proposal)
-    } else {
-      proposal_logratio <- dirichlet1(theta_current, theta_proposal * theta_scale) - dirichlet1(theta_proposal, theta_current * theta_scale)
-      # print(proposal_logratio)
-      partition_ll_field_proposal <- compute_loglikelihood_onefield_cpp(field-1, partition, theta_proposal, V - 1, Mvec[1:p], alpha)
-      mh_ratio <- sum(partition_ll_field_proposal[partition$clsize>0]) - sum((partition_ll[,field])[partition$clsize>0]) + proposal_logratio
-      ## accept proposal or not
-      if (log(runif(1)) < mh_ratio){
-        theta[[field]] <- theta_proposal
-        partition_ll[,field] <- partition_ll_field_proposal
-        theta_accept[field] <- theta_accept[field] + 1
-      }
-    }
-  }
-  theta1_history[imcmc,] <- theta[[1]]
-  #
+  ## note: update_theta need to take partition_ll as input and output updated partition_ll 
+  update_theta_result <- update_theta(theta, partition, alpha)
+  theta <- update_theta_result$theta
+  theta_accept <- theta_accept + update_theta_result$theta_accept
+  theta1_history[imcmc, ] <- theta[[1]]
+  partition_ll <- compute_loglikelihood_all_clusters_all_fields_cpp(partition, theta, V - 1, alpha)
 }
  
 cat(N_accept/nmcmc, "\n")
