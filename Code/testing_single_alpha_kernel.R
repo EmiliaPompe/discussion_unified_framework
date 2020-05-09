@@ -1,12 +1,19 @@
-## This script aims at simply running the Gibbs sampler on a small data set
-## this is work in progress
-rm(list = ls())
-set.seed(1)
-## load packages
-library(Rcpp)
-library(ggplot2)
-## set graphical themes
-theme_set(theme_minimal())
+source('single_kernel_alpha.R')
+
+#--------- testing auxiliary functions
+p <- 3
+alpha_matrix <- matrix(runif(9), ncol =p, byrow = T)
+dim(alpha_matrix)
+beta_0 <- rnorm(3, 0)
+
+beta_diff <- alpha_to_beta(alpha_matrix, beta_0)
+
+alpha_2 <- beta_to_alpha(beta_diff, beta_0)
+all.equal(alpha_2, alpha_matrix)
+
+
+
+#---------- code copied from clearer_single_gibbs
 ## load data 'V' and defines n and p, the dimensions of V
 library(RecordLinkage)
 data(RLdata500)
@@ -73,21 +80,9 @@ s0 <- sqrt(0.1)
 ## prior parameter for beta given beta0
 s  <- sqrt(0.5)
 
-## number of MCMC iterations
-nmcmc <- 1e4
-## there should be update frequencies ... 
 
-## whether to print some things during the run, or not
-verbose <- TRUE
 
-## record history of certain components
-N_history <- rep(NA, nmcmc)
-theta1_history <- matrix(NA, nrow = nmcmc, ncol = Mvec[1])
-beta0_history <- matrix(NA, nrow = nmcmc, ncol = p)
 
-## The state of the Markov chain  is (eta, N, b', b0, theta)
-
-## Initialization of the chains
 ## initial eta 
 eta <- sample(x = 1:n, size = n, replace = T)
 ## initial N
@@ -117,9 +112,8 @@ partition_ll <- compute_loglikelihood_all_clusters_all_fields_cpp(partition, the
 ## initialize quantities to monitor
 N_accept <- 0
 theta_accept <- rep(0, p)
-## next iterate updates in the Gibbs sampler
-for (imcmc in 1:nmcmc){
-  if (verbose && (imcmc %% 1 == 0)) cat("iteration", imcmc, "/", nmcmc, "\n")
+
+
   ## update of eta
   # print(N)
   # print(length(unique(eta)))
@@ -135,7 +129,6 @@ for (imcmc in 1:nmcmc){
   partition$clmembers <- partition$clmembers[relabel_result$old_to_new,]
   partition_ll <- partition_ll[relabel_result$old_to_new,]
   alpha <- alpha[relabel_result$old_to_new,]
-  beta_diff <- beta_diff[relabel_result$old_to_new,] 
   ## update of N
   ## random walk proposal
   N_rw_stepsize <- 20
@@ -150,64 +143,37 @@ for (imcmc in 1:nmcmc){
       N_accept <- N_accept + 1
     }
   }
-  N_history[imcmc] <- N
-  # if (verbose) print("update N done")
+  N
   
-  # update of alpha, beta diff and beta0
-  # we are storing both alpha and beta diff to avoid making unnecessary calculations
-  alpha_beta_update <- single_full_alpha_update(beta_diff = beta_diff, 
-                                                alpha = alpha,
-                                                beta_0 = beta0, 
-                                                clustering = partition,
-                                                theta_list = theta, 
-                                                V = V,
-                                                partition_ll = partition_ll,
-                                                mu_0 = m0, 
-                                                s_0_sq = s0^2,
-                                                s_sq = s^2,
-                                                proposal_sd = 0.1,
-                                                p = p,
-                                                n = n)
-  alpha <- alpha_beta_update$alpha
-  beta_diff <- alpha_beta_update$beta_diff
-  beta0 <- alpha_beta_update$beta0
-  beta0_history[imcmc,] <- beta0
+# ----------- testing the new function  
+  single_beta_0_update(beta_diff,beta_0,  mu_0 = m0, s_0_sq = s0^2, s_sq = s^2)
+  l <- 2
+  icluster <- 3
  
+  single_beta_diff_update(beta_diff_j_l = beta_diff[icluster, l],
+                          beta_0_l = beta0[l],
+                          l = l,
+                          icluster = icluster, 
+                          clustering = partition,
+                          theta_l = theta[[l]], 
+                          V = V,
+                          s_sq = s^2,
+                          partition_ll = partition_ll,
+                          proposal_sd = 0.1)
   
-  ## update of theta
-  ## note: prior on theta = uniform on simplex, equivalently Dirichlet(1,1,...,1)
-  ## note: update_theta need to take partition_ll as input and output updated partition_ll 
-  update_theta_result <- update_theta(theta, partition, alpha)
-  theta <- update_theta_result$theta
-  theta_accept <- theta_accept + update_theta_result$theta_accept
-  theta1_history[imcmc, ] <- theta[[1]]
-  partition_ll <- compute_loglikelihood_all_clusters_all_fields_cpp(partition, theta, V - 1, alpha)
-}
- 
-cat(N_accept/nmcmc, "\n")
-cat(theta_accept/nmcmc, "\n")
-
-matplot(N_history, type = 'l')
-
-matplot(theta1_history[,1:2], type = 'l')
-abline(h = fieldfrequencies[[1]][1:2])
-
-# pairs(theta1_history[200:nmcmc,1:10])
-# hist(N_history[(nmcmc/10):nmcmc])
-
-hist(theta1_history[(nmcmc/10):nmcmc,1])
-abline(v = fieldfrequencies[[1]][1])
-
-hist(theta1_history[(nmcmc/10):nmcmc,2])
-abline(v = fieldfrequencies[[1]][2])
-
-hist(theta1_history[(nmcmc/10):nmcmc,3])
-abline(v = fieldfrequencies[[1]][3])
-
-# density plots for beta0
-ggplot(as.data.frame(beta0_history), aes(V1)) + geom_density()
-ggplot(as.data.frame(beta0_history), aes(V2)) + geom_density()
-
-# traceplots for beta0
-matplot(beta0_history[seq(from = 1, by = 10, to = 1e4),1:2], type = 'l')
- 
+  single_full_alpha_update(beta_diff = beta_diff, alpha = beta_to_alpha(beta_diff, beta0),
+                           beta_0 = beta_0, clustering = partition,
+                           theta_list = theta, 
+                           V = V,
+                           partition_ll = partition_ll,
+                           mu_0 = m0, 
+                           s_0_sq = s0^2,
+                           s_sq = s^2,
+                           proposal_sd = 0.1,
+                           p = p,
+                           n = n)
+  
+  
+  
+  
+  
