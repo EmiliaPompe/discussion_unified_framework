@@ -146,14 +146,15 @@ single_beta_diff_update <- function(beta_diff_j_l,
 
 # beta_diff is an n x p matrix with value of beta diff for a given cluster (row) and field (column)
 # alpha is an n x p matrix with value of alpha for a given cluster (row) and field (column)
-# l, icluster, clustering, V are used as arguments in compute_loglikelihood_one_cluster_one_field_cpp
+# beta_0 p-element vector
+# clustering, V are used as arguments in compute_loglikelihood_one_cluster_one_field_cpp
 # theta_list is a list of vectors theta_l for l in 1:p used in compute_loglikelihood_one_cluster_one_field_cpp
 # partition_ll is an n x p matrix with current log-likelihood values for a given cluster and field
 # mu_0, s_0_sq and s_sq are hyperparameters
 # proposal_sd is the std of the Gaussian proposal in the Metropolis-within-Gibbs update
 # p is the number of columns of V (variables)
 # n is the number of rows of V (observations)
-# returns a list with the the updated matrix beta_diff and the corresponding matrix alpha, and  udpdated beta0
+# returns a list with the the updated matrix beta_diff and the corresponding matrix alpha, and updated beta0
 
 single_full_alpha_update <- function(beta_diff,
                                      alpha,

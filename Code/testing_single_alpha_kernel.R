@@ -12,7 +12,10 @@ alpha_2 <- beta_to_alpha(beta_diff, beta_0)
 all.equal(alpha_2, alpha_matrix)
 
 
-
+rm(beta_diff)
+rm(beta_0)
+rm(alpha_2)
+rm(alpha_matrix)
 #---------- code copied from clearer_single_gibbs
 ## load data 'V' and defines n and p, the dimensions of V
 library(RecordLinkage)
@@ -162,7 +165,7 @@ theta_accept <- rep(0, p)
                           proposal_sd = 0.1)
   
   single_full_alpha_update(beta_diff = beta_diff, alpha = beta_to_alpha(beta_diff, beta0),
-                           beta_0 = beta_0, clustering = partition,
+                           beta_0 = beta0, clustering = partition,
                            theta_list = theta, 
                            V = V,
                            partition_ll = partition_ll,

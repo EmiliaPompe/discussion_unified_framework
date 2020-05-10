@@ -208,6 +208,7 @@ abline(v = fieldfrequencies[[1]][3])
 # density plots for beta0
 ggplot(as.data.frame(beta0_history), aes(V1)) + geom_density()
 ggplot(as.data.frame(beta0_history), aes(V2)) + geom_density()
+ggplot(as.data.frame(beta0_history), aes(V14)) + geom_density()
 
 # traceplots for beta0
 matplot(beta0_history[seq(from = 1, by = 1, to = 1e4),1:2], type = 'l')
