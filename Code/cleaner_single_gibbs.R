@@ -35,7 +35,7 @@ V=as.matrix(V)
 # Vector 'Mvec' has entries 'M_l' for l in 1:p
 
 ## let's subset the data 
-V <- V[1:50,1:2]
+#V <- V[1:50,1:2]
 ## define dimensions of V
 n <- dim(V)[1]
 p <- dim(V)[2]
@@ -195,6 +195,7 @@ abline(h = fieldfrequencies[[1]][1:2])
 # pairs(theta1_history[200:nmcmc,1:10])
 # hist(N_history[(nmcmc/10):nmcmc])
 
+hist(N_history[(nmcmc/10):nmcmc])
 hist(theta1_history[(nmcmc/10):nmcmc,1])
 abline(v = fieldfrequencies[[1]][1])
 
@@ -209,5 +210,10 @@ ggplot(as.data.frame(beta0_history), aes(V1)) + geom_density()
 ggplot(as.data.frame(beta0_history), aes(V2)) + geom_density()
 
 # traceplots for beta0
-matplot(beta0_history[seq(from = 1, by = 10, to = 1e4),1:2], type = 'l')
+matplot(beta0_history[seq(from = 1, by = 1, to = 1e4),1:2], type = 'l')
+
+p1 <- ggplot(data.frame(V1= N_history[1001:nmcmc]), aes(V1)) + geom_histogram(bins=20, col = 'black', fill = 'gray70')
+p2 <- ggplot(data.frame(V1= N_history[1:nmcmc], V2 = 1:nmcmc), aes(x=V2,y =V1)) + geom_line(col = 'black')
+p1
+p2
  

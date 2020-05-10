@@ -5,6 +5,7 @@ sourceCpp('compute_loglikelihood_one_cluster_one_field.cpp')
 # beta_diff is a matrix with n rows and p columns; each row denotes a cluster and each column denotes a variable
 # if a cluster is empty we keep NA throughout the row; otherwise we keep the value of beta_prime_{j,l} - beta_0_l corresponding to variable l and cluster j
 # beta_0 is a p-element vector
+# returns an n x p matrix alpha
 beta_to_alpha <- function(beta_diff, beta_0){
   alpha <- beta_diff 
   for(i in 1:nrow(beta_diff)){
@@ -22,6 +23,7 @@ beta_to_alpha <- function(beta_diff, beta_0){
 # alpha is a matrix with n rows and p columns; each row denotes a cluster and each column denotes a variable
 # if a cluster is empty we keep NA throughout the row; otherwise we keep the value of alpha corresponding to variable l and cluster j
 # beta_0 is a p-element vector
+# returns an n x p matrix beta_diff
 
 alpha_to_beta <- function(alpha, beta_0){
   beta_diff <- alpha
@@ -59,9 +61,16 @@ single_beta_0_update <- function(beta_diff,
   return(list(beta_0 = unlist(result)))
 }
 
+# ------------ auxiliary function for calculating density for a given cluster and field
+
+# the main argument is beta_diff_j_l: a value of beta_diff for cluster j and field l
+# for calculating the prior we need  beta_diff_j_l and hyperparameter sq
+# for calculating the likelihod we use the cpp function compute_loglikelihood_one_cluster_one_field_cpp
+# this function takes l, icluster, clustering, theta_l, V and alpha_j_l (called a) as arguments
+# alpha_j_l is alpha corresponding to a given beta_diff
+# returns a value of the density for a given cluster and field
 
 log_target_density_beta_prime <- function(beta_diff_j_l,
-                                          beta_0_l,
                                           l,
                                           icluster, 
                                           clustering,
@@ -77,6 +86,14 @@ log_target_density_beta_prime <- function(beta_diff_j_l,
   return(logLik + logPrior)
 }
 
+# ------------  function for performing an update of beta diff
+# beta_diff_j_l is a value of beta_diff for cluster j and field l
+# beta_0_l is a value of beta0 for field l
+# l, icluster, clustering, theta_l, V are used as arguments in compute_loglikelihood_one_cluster_one_field_cpp
+# partition_ll is an n x p matrix with current log-likelihood values for a given cluster and field
+# s_sq is a hyperparameter
+# proposal_sd is the std of the Gaussian proposal in the Metropolis-within-Gibbs update
+# returns a list with the new beta_diff and the corresponding alpha for a given cluster and field
 
 single_beta_diff_update <- function(beta_diff_j_l,
                                     beta_0_l,
@@ -106,7 +123,7 @@ single_beta_diff_update <- function(beta_diff_j_l,
   
   # lok likelihood taken from partition_ll + the prior
   current_density <-  partition_ll[icluster, l] + dnorm(beta_diff_j_l, 0, sqrt(s_sq), log = TRUE)
-  proposed_density <- log_target_density_beta_prime(proposed_state, beta_0_l,
+  proposed_density <- log_target_density_beta_prime(proposed_state, 
                                                     l, icluster, 
                                                     clustering, theta_l,
                                                     V, proposed_alpha_j_l,
@@ -124,6 +141,19 @@ single_beta_diff_update <- function(beta_diff_j_l,
   
   return(list(beta_diff_j_l = current_state, alpha_j_l = alpha_j_l))
 }
+
+# ------------  function for performing the full update on beta0, alpha and (equivalently) beta_diff
+
+# beta_diff is an n x p matrix with value of beta diff for a given cluster (row) and field (column)
+# alpha is an n x p matrix with value of alpha for a given cluster (row) and field (column)
+# l, icluster, clustering, V are used as arguments in compute_loglikelihood_one_cluster_one_field_cpp
+# theta_list is a list of vectors theta_l for l in 1:p used in compute_loglikelihood_one_cluster_one_field_cpp
+# partition_ll is an n x p matrix with current log-likelihood values for a given cluster and field
+# mu_0, s_0_sq and s_sq are hyperparameters
+# proposal_sd is the std of the Gaussian proposal in the Metropolis-within-Gibbs update
+# p is the number of columns of V (variables)
+# n is the number of rows of V (observations)
+# returns a list with the the updated matrix beta_diff and the corresponding matrix alpha, and  udpdated beta0
 
 single_full_alpha_update <- function(beta_diff,
                                      alpha,
