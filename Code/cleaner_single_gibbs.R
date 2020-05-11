@@ -177,11 +177,11 @@ for (imcmc in 1:nmcmc){
   ## update of theta
   ## note: prior on theta = uniform on simplex, equivalently Dirichlet(1,1,...,1)
   ## note: update_theta need to take partition_ll as input and output updated partition_ll 
-  update_theta_result <- update_theta(theta, partition, alpha)
+  update_theta_result <- update_theta(theta, partition, partition_ll, alpha)
   theta <- update_theta_result$theta
   theta_accept <- theta_accept + update_theta_result$theta_accept
   theta1_history[imcmc, ] <- theta[[1]]
-  partition_ll <- compute_loglikelihood_all_clusters_all_fields_cpp(partition, theta, V - 1, alpha)
+  partition_ll <- update_theta_result$partition_ll
 }
  
 cat(N_accept/nmcmc, "\n")

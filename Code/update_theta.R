@@ -2,13 +2,13 @@
 ### it updates each field of theta independently
 
 
-update_theta <- function(theta, partition, alpha){
+update_theta <- function(theta, partition, partition_ll, alpha){
   theta_accept <- rep(0, length(theta))
   ## for each field
   for (l in 1:p){
     ## current state
     x <- theta[[l]] 
-    cl_log_lik <- compute_loglikelihood_all_clusters_one_field_cpp(l - 1, partition, x, V - 1, alpha)
+    cl_log_lik <- partition_ll[,l] 
     ## dirichlet proposal
     x_propose <- gtools::rdirichlet(1, alpha = (1 + concentration * x))[1,]
     cl_log_lik_new <- compute_loglikelihood_all_clusters_one_field_cpp(l - 1, partition, x_propose, V - 1, alpha)
@@ -19,7 +19,8 @@ update_theta <- function(theta, partition, alpha){
     if (log(runif(1)) < laccept){
       theta[[l]] <- x_propose
       theta_accept[l] <- 1
+      partition_ll[,l] <- cl_log_lik_new
     }
   }
-  return(list(theta = theta, theta_accept = theta_accept))
+  return(list(theta = theta, theta_accept = theta_accept, partition_ll = partition_ll))
 }
