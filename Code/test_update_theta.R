@@ -120,52 +120,13 @@ all(Mvec[1:p] == sapply(theta, length))
 ## compute log-likelihood associated with each cluster
 partition_ll <- compute_loglikelihood_all_clusters_all_fields_cpp(partition, theta, V-1, alpha)
 
-## to perform coupled updates of theta
+source("update_theta.R")
 concentration <- 10000
 
-alpha1 <- alpha
-# alpha2 <- matrix(0.01, nrow = n, ncol = p)
-alpha2 <- alpha1
-eta1 <- sample(x = 1:n, size = n, replace = T)
-eta2 <- sample(x = 1:n, size = n, replace = T)
-theta1 <- theta
-theta2 <- list()
-for (l in 1:p){
-  theta2[[l]] <- gtools::rdirichlet(1, alpha = 1 + theta1[[l]] * concentration )[1,]
-}
+update_theta_result <- update_theta(theta, partition, partition_ll, alpha)
+update_theta_result$theta_accept
+theta_new <- update_theta_result$theta
+lapply(theta_new, sum)
 
-source("couple_theta.R")
-source("couple_dirichlet.R")
-partition1 <- init_clustering_cpp(eta1 - 1)
-partition_ll1 <- compute_loglikelihood_all_clusters_all_fields_cpp(partition1, theta1, V - 1, alpha1)
-
-# partition2 <- init_clustering_cpp(eta2 - 1)
-# partition_ll2 <- compute_loglikelihood_all_clusters_all_fields_cpp(partition2, theta2, V - 1, alpha2)
-partition2 <- partition1
-partition_ll2 <- compute_loglikelihood_all_clusters_all_fields_cpp(partition1, theta2, V - 1, alpha1)
-
-
-## does not change the value of theta1 and theta2
-# count <- 0 
-# distance <- rep(0, 100)
-# for (iter in 1:100){
-#   couple_theta_result <- couple_theta(theta1, theta2, partition1, partition2, partition_ll1, partition_ll2, alpha1, alpha2)
-#   count <- count + couple_theta_result$coupled
-#   distance[iter] <- sum(sapply(1:p, function(l) sum(couple_theta_result$theta1[[l]] - couple_theta_result$theta2[[l]])**2))
-# }
-# count / 100
-# plot(distance)
-
-## change the value of theta1 and theta2
-distance <- rep(0, 1e4)
-for( iter in 1:length(distance)){
-  couple_theta_result <- couple_theta(theta1, theta2, partition1, partition2, partition_ll1, partition_ll2, alpha1, alpha2)
-  theta1 <- couple_theta_result$theta1
-  theta2 <- couple_theta_result$theta2
-  partition_ll1 <- couple_theta_result$partition_ll1
-  partition_ll2 <- couple_theta_result$partition_ll2
-  if (couple_theta_result$coupled) cat('coupled at iteration', iter)
-  distance[iter] <- sum(sapply(1:p, function(l) sum(couple_theta_result$theta1[[l]] - couple_theta_result$theta2[[l]])**2))
-}
-plot(distance, type = 'l')
+print(update_theta_result$partition_ll == compute_loglikelihood_all_clusters_all_fields_cpp(partition, theta_new, V -1, alpha))
 
