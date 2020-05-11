@@ -110,7 +110,7 @@ single_beta_diff_update <- function(beta_diff_j_l,
     beta_diff_j_l <- rnorm(1, 0, sqrt(s_sq))
     exp_beta <- exp(beta_0_l +beta_diff_j_l )
     alpha_j_l <- exp_beta/(exp_beta+1)
-    return(list(beta_diff_j_l = beta_diff_j_l, alpha_j_l = alpha_j_l))
+    return(list(beta_diff_j_l = beta_diff_j_l, alpha_j_l = alpha_j_l, accept = NA))
   }
   
   current_state <- beta_diff_j_l
@@ -139,7 +139,7 @@ single_beta_diff_update <- function(beta_diff_j_l,
     alpha_j_l <- exp_beta/(exp_beta+1)
   }
   
-  return(list(beta_diff_j_l = current_state, alpha_j_l = alpha_j_l))
+  return(list(beta_diff_j_l = current_state, alpha_j_l = alpha_j_l, accept = accept))
 }
 
 # ------------  function for performing the full update on beta0, alpha and (equivalently) beta_diff
@@ -176,6 +176,7 @@ single_full_alpha_update <- function(beta_diff,
   # matrices for storing new values
   new_beta_diff <- matrix(NA, ncol = p, nrow = n)
   new_alpha <- matrix(NA, ncol = p, nrow = n)
+  acc_matrix <- matrix(NA, ncol = p, nrow = n)
   
   for(l in 1:p){
     theta_l <- theta_list[[l]]
@@ -194,8 +195,9 @@ single_full_alpha_update <- function(beta_diff,
                                              proposal_sd = proposal_sd)
       new_beta_diff[icluster, l] <- result_list$beta_diff_j_l
       new_alpha[icluster, l] <- result_list$alpha_j_l
+      acc_matrix[icluster, l] <- result_list$accept
     }
   }
-  return(list(beta_diff = new_beta_diff, alpha = new_alpha, beta0 = beta_0))
+  return(list(beta_diff = new_beta_diff, alpha = new_alpha, beta0 = beta_0, acc_matrix = acc_matrix))
   
 }

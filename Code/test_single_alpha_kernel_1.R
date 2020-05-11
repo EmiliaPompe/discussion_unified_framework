@@ -149,7 +149,7 @@ theta_accept <- rep(0, p)
   N
   
 # ----------- testing the new function  
-  single_beta_0_update(beta_diff,beta_0,  mu_0 = m0, s_0_sq = s0^2, s_sq = s^2)
+  single_beta_0_update(beta_diff,beta0,  mu_0 = m0, s_0_sq = s0^2, s_sq = s^2)
   l <- 2
   icluster <- 3
  
@@ -172,7 +172,7 @@ theta_accept <- rep(0, p)
                            mu_0 = m0, 
                            s_0_sq = s0^2,
                            s_sq = s^2,
-                           proposal_sd = 0.1,
+                           proposal_sd = 0.3,
                            p = p,
                            n = n)
   

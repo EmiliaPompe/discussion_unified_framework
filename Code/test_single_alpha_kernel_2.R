@@ -74,7 +74,7 @@ s0 <- sqrt(0.1)
 s  <- sqrt(0.5)
 
 ## number of MCMC iterations
-nmcmc <- 1e4
+nmcmc <- 2e3
 ## there should be update frequencies ... 
 
 ## whether to print some things during the run, or not
@@ -84,6 +84,7 @@ verbose <- TRUE
 N_history <- rep(NA, nmcmc)
 theta1_history <- matrix(NA, nrow = nmcmc, ncol = Mvec[1])
 beta0_history <- matrix(NA, nrow = nmcmc, ncol = p)
+alpha_history <- vector(mode = 'list', length = nmcmc)
 
 ## The state of the Markov chain  is (eta, N, b', b0, theta)
 
@@ -123,19 +124,19 @@ for (imcmc in 1:nmcmc){
   ## update of eta
   # print(N)
   # print(length(unique(eta)))
-  update_eta_result <- update_eta_cpp(eta-1, partition, partition_ll, theta, V-1, Mvec[1:p], alpha, N, beta0, s)
-  eta <- update_eta_result$eta
-  partition_ll <- update_eta_result$clusterloglikelihoods
-  partition <- update_eta_result$clustering
+ # update_eta_result <- update_eta_cpp(eta-1, partition, partition_ll, theta, V-1, Mvec[1:p], alpha, N, beta0, s)
+#  eta <- update_eta_result$eta
+  #partition_ll <- update_eta_result$clusterloglikelihoods
+  #partition <- update_eta_result$clustering
   # alpha <- update_eta_result$alpha
   ## relabel 
-  relabel_result <- relabel2(eta, partition)
-  eta <- relabel_result$eta
-  partition$clsize <- partition$clsize[relabel_result$old_to_new]
-  partition$clmembers <- partition$clmembers[relabel_result$old_to_new,]
-  partition_ll <- partition_ll[relabel_result$old_to_new,]
-  alpha <- alpha[relabel_result$old_to_new,]
-  beta_diff <- beta_diff[relabel_result$old_to_new,] 
+  #relabel_result <- relabel2(eta, partition)
+  #eta <- relabel_result$eta
+  #partition$clsize <- partition$clsize[relabel_result$old_to_new]
+  #partition$clmembers <- partition$clmembers[relabel_result$old_to_new,]
+  #partition_ll <- partition_ll[relabel_result$old_to_new,]
+  #alpha <- alpha[relabel_result$old_to_new,]
+  #beta_diff <- beta_diff[relabel_result$old_to_new,] 
   ## update of N
   ## random walk proposal
   N_rw_stepsize <- 20
@@ -165,15 +166,16 @@ for (imcmc in 1:nmcmc){
                                                 mu_0 = m0, 
                                                 s_0_sq = s0^2,
                                                 s_sq = s^2,
-                                                proposal_sd = 1.5,
+                                                proposal_sd = 1.2,
                                                 p = p,
                                                 n = n)
   alpha <- alpha_beta_update$alpha
   beta_diff <- alpha_beta_update$beta_diff
   beta0 <- alpha_beta_update$beta0
   beta0_history[imcmc,] <- beta0
-  print(mean(alpha_beta_update$acc_matrix, na.rm = TRUE))
- 
+  #print(mean(alpha_beta_update$acc_matrix, na.rm = TRUE))
+  alpha_history[[imcmc]] <- alpha
+  
   
   ## update of theta
   ## note: prior on theta = uniform on simplex, equivalently Dirichlet(1,1,...,1)
@@ -184,7 +186,7 @@ for (imcmc in 1:nmcmc){
   theta1_history[imcmc, ] <- theta[[1]]
   partition_ll <- compute_loglikelihood_all_clusters_all_fields_cpp(partition, theta, V - 1, alpha)
 }
- 
+
 cat(N_accept/nmcmc, "\n")
 cat(theta_accept/nmcmc, "\n")
 
@@ -211,14 +213,23 @@ ggplot(as.data.frame(beta0_history), aes(V1)) + geom_density()
 ggplot(as.data.frame(beta0_history), aes(V2)) + geom_density()
 ggplot(as.data.frame(beta0_history), aes(V14)) + geom_density()
 
-# traceplots for beta0
-matplot(beta0_history[seq(from = 1, by = 1, to = 1e4),14], type = 'l')
+alpha_history %>% length()
 
-p1 <- ggplot(data.frame(V1= N_history[2001:nmcmc]), aes(V1)) + geom_histogram(bins=20, col = 'black', fill = 'gray70') + xlab('N')
-p2 <- ggplot(data.frame(V1= N_history[1:nmcmc], V2 = 1:nmcmc), aes(x=V2,y =V1)) + geom_line(col = 'black')+ ylab('N') + xlab('iteration')
-p1
-p2
-library(gridExtra)
-grid.arrange(p1, p2, ncol =2)
-ggsave('single_chain_N_hist_traceplot.png', grid.arrange(p1, p2, ncol =2), height = 6, width =10)
+lapply(alpha_history, function(x) x[1,1])
+
+# traceplots for beta0
+matplot(beta0_history[seq(from = 1, by = 1, to = 1e3),14], type = 'l')
+matplot(N_history, type = 'l')
+matplot(unlist(lapply(alpha_history, function(x) x[1,1])), type = 'l')
+matplot(unlist(lapply(alpha_history, function(x) x[10,2])), type = 'l')
+matplot(unlist(lapply(alpha_history, function(x) x[30,3])), type = 'l')
+matplot(unlist(lapply(alpha_history, function(x) x[50,4])), type = 'l')
+matplot(unlist(lapply(alpha_history, function(x) x[100,5])), type = 'l')
+matplot(unlist(lapply(alpha_history, function(x) x[130,6])), type = 'l')
+matplot(unlist(lapply(alpha_history, function(x) x[150,7])), type = 'l')
+matplot(unlist(lapply(alpha_history, function(x) x[170,8])), type = 'l')
+matplot(unlist(lapply(alpha_history, function(x) x[185,9])), type = 'l')
+matplot(unlist(lapply(alpha_history, function(x) x[50,10])), type = 'l')
+matplot(unlist(lapply(alpha_history, function(x) x[50,14])), type = 'l')
+
 

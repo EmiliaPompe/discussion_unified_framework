@@ -37,6 +37,86 @@ coupled_beta_0_update <- function(beta_diff_1,
   return(list(beta_0_1 = beta_0_1, beta_0_2 = beta_0_2, identical = identical))
 }
 
+coupled_beta_aux_update <- function(beta_diff_j_l_1,
+                                    beta_diff_j_l_2,
+                                    beta_diff_j_l_ident,
+                                    beta_0_l_1,
+                                    beta_0_l_2,
+                                    l,
+                                    icluster, 
+                                    clustering_1,
+                                    clustering_2,
+                                    theta_l_1, 
+                                    theta_l_2,
+                                    V,
+                                    s_sq,
+                                    partition_ll_1,
+                                    partition_ll_2,
+                                    proposal_sd){
+  # drawing proposals from maximal coupling
+  max_coupling <- rnorm_reflectionmxax(beta_diff_j_l_1,
+                                       beta_diff_j_l_2,
+                                       proposal_sd)
+  # proposed beta diff and alpha for both chains
+  prop_beta_1 <- max_coupling$xy[1]
+  prob_beta_2 <- max_coupling$xy[2]
+  
+  exp_beta_1 <- exp(beta_0_l_1 + prop_beta_1)
+  prop_alpha_1 <- exp_beta_1/(exp_beta_1+1)
+  exp_beta_2 <- exp(beta_0_l_2 + prop_beta_2)
+  prop_alpha_2 <- exp_beta_2/(exp_beta_2+1)
+  
+  # common random number for acceptance/rejection
+  logu <- log(runif(1))
+  current_density_1 <- partition_ll_1[icluster, l] + dnorm(beta_diff_j_l_1, 0, sqrt(s_sq), log = TRUE)
+  current_density_2 <- partition_ll_2[icluster, l] + dnorm(beta_diff_j_l_2, 0, sqrt(s_sq), log = TRUE)
+  
+  proposed_density_1 <-  log_target_density_beta_prime(prop_beta_1 , 
+                                                       l, icluster, 
+                                                       clustering_1, theta_l_1,
+                                                       V, prop_alpha_1,
+                                                       s_sq)
+  proposed_density_2 <- log_target_density_beta_prime(prop_beta_2 , 
+                                                      l, icluster, 
+                                                      clustering_2, theta_l_2,
+                                                      V, prop_alpha_2,
+                                                      s_sq)
+  # acceptance/rejection for chain 1
+  accept1 <- (logu < (proposed_density_1 - current_density_1))
+  if(accept1){
+    beta_diff_j_l_1 <- prob_beta_1
+    alpha_j_l_1 <- prob_alpha_1
+  }else{
+    exp_beta_1 <- exp(beta_0_l_1 + beta_diff_j_l_1)
+    alpha_j_l_1 <- exp_beta_1/(exp_beta_1+1) 
+  }
+  
+  # acceptance/rejection for chain 2 
+  accept2 <- (logu < (proposed_density_2 - current_density_2))
+  
+  if(accept2){
+    beta_diff_j_l_2 <- prob_beta_2
+    alpha_j_l_2 <- prob_alpha_2
+  }else{
+    exp_beta_2 <- exp(beta_0_l_2 + beta_diff_j_l_2)
+    alpha_j_l_2 <- exp_beta_2/(exp_beta_2+1) 
+  }
+  
+  # identical equals TRUE of the chains have coupled 
+  if(isTRUE(max_coupling$identical && accept1 && accept2)){
+    identical <- TRUE
+  }else{
+    identical <- beta_diff_j_l_ident
+  }
+  
+  return(list(beta_diff_j_l_1 = beta_diff_j_l_1,
+              beta_diff_j_l_2 = beta_diff_j_l_2,
+              alpha_j_l_1 = alpha_j_l_1,
+              alpha_j_l_2 = alpha_j_l_2,
+              beta_diff_identical = identical))
+  
+}
+
 
 # ------------  function for performing an update of beta diff
 # beta_diff_j_l is a value of beta_diff for cluster j and field l
@@ -49,6 +129,7 @@ coupled_beta_0_update <- function(beta_diff_1,
 
 coupled_beta_diff_update <- function(beta_diff_j_l_1,
                                      beta_diff_j_l_2,
+                                     beta_diff_j_l_ident,
                                      beta_0_l_1,
                                      beta_0_l_2,
                                      l,
@@ -63,40 +144,25 @@ coupled_beta_diff_update <- function(beta_diff_j_l_1,
                                      partition_ll_2,
                                      proposal_sd){
   # NA in this cluster means the cluster is empty so we are drawing from the prior
+  # in this case we can always couple 
   if(is.na(partition_ll_1[icluster, l]) && is.na(partition_ll_2[icluster, l])){
-    beta_diff_j_l <- rnorm(1, 0, sqrt(s_sq))
-    exp_beta <- exp(beta_0_l +beta_diff_j_l )
-    alpha_j_l <- exp_beta/(exp_beta+1)
-    return(list(beta_diff_j_l = beta_diff_j_l, alpha_j_l = alpha_j_l))
-  }
-  
-  current_state <- beta_diff_j_l
-  proposed_state <- rnorm(1, current_state, proposal_sd)
-  # calculating the corresponding value of alpha
-  exp_beta <- exp(beta_0_l + proposed_state)
-  proposed_alpha_j_l <- exp_beta/(exp_beta+1)
-  # common random number for acceptance/rejection
-  logu <- log(runif(1))
-  
-  # lok likelihood taken from partition_ll + the prior
-  current_density <-  partition_ll[icluster, l] + dnorm(beta_diff_j_l, 0, sqrt(s_sq), log = TRUE)
-  proposed_density <- log_target_density_beta_prime(proposed_state, 
-                                                    l, icluster, 
-                                                    clustering, theta_l,
-                                                    V, proposed_alpha_j_l,
-                                                    s_sq)
-  
-  accept <- (logu < (proposed_density - current_density))
-  
-  if(accept){
-    current_state <- proposed_state 
-    alpha_j_l <- proposed_alpha_j_l
+    beta_diff_j_l_1 <- rnorm(1, 0, sqrt(s_sq))
+    beta_diff_j_l_2 <- beta_diff_j_l_1
+    exp_beta_1 <- exp(beta_0_l_1 + beta_diff_j_l_1)
+    alpha_j_l_1 <- exp_beta_1/(exp_beta_1+1)
+    exp_beta_2 <- exp(beta_0_l_2 + beta_diff_j_l_2)
+    alpha_j_l_2 <- exp_beta_2/(exp_beta_2+1)
+    
+    return(list(beta_diff_j_l_1 = beta_diff_j_l_1,
+                beta_diff_j_l_2 = beta_diff_j_l_2,
+                alpha_j_l_1 = alpha_j_l_1,
+                alpha_j_l_2 = alpha_j_l_2,
+                beta_diff_identical = TRUE))
   }else{
-    exp_beta <- exp(beta_0_l + current_state)
-    alpha_j_l <- exp_beta/(exp_beta+1)
+    
+    
+    
   }
-  
-  return(list(beta_diff_j_l = current_state, alpha_j_l = alpha_j_l))
 }
 
 # ------------  function for performing the full update on beta0, alpha and (equivalently) beta_diff
@@ -114,24 +180,25 @@ coupled_beta_diff_update <- function(beta_diff_j_l_1,
 # returns a list with the the updated matrix beta_diff_1, beta_diff_2 and the corresponding matrix alpha_1, alpha_2 and upddated beta0_1, beta0_2
 
 coupled_full_alpha_update <- function(beta_diff_1,
-                                     beta_diff_2,
-                                     alpha_1,
-                                     alpha_2,
-                                     beta_0_1,
-                                     beta_0_2,
-                                     clustering_1,
-                                     clustering_2,
-                                     theta_list_1,
-                                     theta_list_2,
-                                     V,
-                                     partition_ll_1,
-                                     partition_ll_2,
-                                     mu_0, 
-                                     s_0_sq,
-                                     s_sq,
-                                     proposal_sd,
-                                     p,
-                                     n){
+                                      beta_diff_2,
+                                      beta_diff_identical,
+                                      alpha_1,
+                                      alpha_2,
+                                      beta_0_1,
+                                      beta_0_2,
+                                      clustering_1,
+                                      clustering_2,
+                                      theta_list_1,
+                                      theta_list_2,
+                                      V,
+                                      partition_ll_1,
+                                      partition_ll_2,
+                                      mu_0, 
+                                      s_0_sq,
+                                      s_sq,
+                                      proposal_sd,
+                                      p,
+                                      n){
   # updating beta_0 
   beta_0_update <- coupled_beta_0_update(beta_diff_1, beta_diff_2,
                                          beta_0_1, beta_0_2,
