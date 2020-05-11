@@ -10,8 +10,8 @@ couple_eta <- function(j, eta1, eta2, partition1, partition2, partition_ll1, par
   oldlabel2 <- eta2[j]
   # compute everything: probability of including j excluding j from each cluster
   # full conditional of record j belong to each cluster
-  res_psampq1 <- compute_include_exclude_cpp(j - 1, partition1, eta1 - 1, cl_log_lik1, theta1, V, dimV, alpha1, N1)
-  res_psampq2 <- compute_include_exclude_cpp(j - 1, partition2, eta2 - 1, cl_log_lik2, theta2, V, dimV, alpha2, N2)
+  res_psampq1 <- compute_include_exclude_cpp(j - 1, partition1, eta1 - 1, partition_ll1, theta1, V - 1, alpha1, N1)
+  res_psampq2 <- compute_include_exclude_cpp(j - 1, partition2, eta2 - 1, partition_ll2, theta2, V - 1, alpha2, N2)
   psampq1 <- res_psampq1$psampq
   psampq2 <- res_psampq2$psampq
   newlabels <- couple_multinomial_alt(p = psampq1, q= psampq2, n = n)
@@ -30,17 +30,8 @@ couple_eta <- function(j, eta1, eta2, partition1, partition2, partition_ll1, par
   new_cl_log_lik2 <- partition_ll2
   new_cl_log_lik2[oldlabel2, ] <- res_psampq2$logprob_exclude[oldlabel2 , ]
   new_cl_log_lik2[newlabel2, ] <- res_psampq2$logprob_include[newlabel2 , ]
-  # new_cl_log_lik1 <- compute_loglikelihood_clusters(partition1, theta1, V, dimV, alpha1)
-  # new_cl_log_lik2 <- compute_loglikelihood_clusters(partition2, p2, V, dimV, a2)
   return(list( eta1 = eta1, eta2 = eta2, 
                partition1 = partition1, partition2 = partition2, 
-               cl_log_lik1 = new_cl_log_lik1, cl_log_lik2 = new_cl_log_lik2))
+               partition_ll1 = new_cl_log_lik1, partition_ll2 = new_cl_log_lik2))
 }
 
-# source("getData.R")
-# source("initPara.R")
-# p1 <- p
-# p2 <- p
-# computeQcpp(j - 1 , lambda1 - 1, p, V, cumdime - 1, a1, n, H, N1)
-
-# print(coupleLambda(j = 1, lambda1 = lambda1 , lambda2 = lambda2, p1 = p1, p2 = p2, a1 = a1, a2 = a2, N1 =N1, N2 = N2))
