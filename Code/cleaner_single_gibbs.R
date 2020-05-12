@@ -73,6 +73,8 @@ m0 <- logit(0.01)
 s0 <- sqrt(0.1)
 ## prior parameter for beta given beta0
 s  <- sqrt(0.5)
+## truncation limit for N
+max_N <- 100000;
 
 ## number of MCMC iterations
 nmcmc <- 1e2
@@ -137,22 +139,32 @@ for (imcmc in 1:nmcmc){
   partition_ll <- partition_ll[relabel_result$old_to_new,]
   alpha <- alpha[relabel_result$old_to_new,]
   beta_diff <- beta_diff[relabel_result$old_to_new,] 
-  ## update of N
-  ## random walk proposal
-  N_rw_stepsize <- 20
-  # if (verbose) print("update N")
-  Nproposal <- sample(x = (N-N_rw_stepsize):(N+N_rw_stepsize), size = 1)
-  if (Nproposal >= partition$ksize){
-    target_proposal <- lfactorial(Nproposal) - lfactorial(Nproposal - partition$ksize) - (n+g) * log(Nproposal)
-    target_current <- lfactorial(N) - lfactorial(N - partition$ksize) - (n+g) * log(N)
-    logu <- log(runif(1))
-    if (logu < (target_proposal - target_current)){
-      N <- Nproposal
-      N_accept <- N_accept + 1
-    }
-  }
+  ## update of 
+
+  # ## random walk proposal
+  # N_rw_stepsize <- 20
+  # # if (verbose) print("update N")
+  # Nproposal <- sample(x = (N-N_rw_stepsize):(N+N_rw_stepsize), size = 1)
+  # if (Nproposal >= partition$ksize){
+  #   target_proposal <- lfactorial(Nproposal) - lfactorial(Nproposal - partition$ksize) - (n+g) * log(Nproposal)
+  #   target_current <- lfactorial(N) - lfactorial(N - partition$ksize) - (n+g) * log(N)
+  #   logu <- log(runif(1))
+  #   if (logu < (target_proposal - target_current)){
+  #     N <- Nproposal
+  #     N_accept <- N_accept + 1
+  #   }
+  # }
+  # N_history[imcmc] <- N
+
+  ## truncate N to N_max
+  if (verbose) print("update N")
+  log_N_weights <- sapply(1 : N_max, function(NN) lfactorial(NN) - lfactorial(NN - partition$ksize) - (n+g) * log(NN) )
+  max_log_N_weights <- max(log_N_weights)
+  log_N_weights <- log_N_weights - max_log_N_weights
+  N_weights <- exp(log_N_weights) / sum(exp(log_N_weights))
+  N <- sample.int(n = N_max, size = 1, prob = N_weights)
   N_history[imcmc] <- N
-  # if (verbose) print("update N done")
+  if (verbose) print("update N done")
   
   # update of alpha, beta diff and beta0
   # we are storing both alpha and beta diff to avoid making unnecessary calculations
@@ -178,7 +190,6 @@ for (imcmc in 1:nmcmc){
   
   ## update of theta
   ## note: prior on theta = uniform on simplex, equivalently Dirichlet(1,1,...,1)
-  ## note: update_theta need to take partition_ll as input and output updated partition_ll 
   update_theta_result <- update_theta(theta, partition, partition_ll, alpha)
   theta <- update_theta_result$theta
   theta_accept <- theta_accept + update_theta_result$theta_accept
