@@ -74,7 +74,7 @@ s0 <- sqrt(0.1)
 ## prior parameter for beta given beta0
 s  <- sqrt(0.5)
 ## truncation limit for N
-max_N <- 100000;
+N_max <- 100000;
 
 ## number of MCMC iterations
 nmcmc <- 1e2
