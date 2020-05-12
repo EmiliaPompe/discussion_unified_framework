@@ -1,3 +1,5 @@
+library(Rcpp)
+sourceCpp('compute_loglikelihood.cpp')
 source('single_kernel_alpha.R')
 
 #--------- testing auxiliary functions
@@ -60,9 +62,9 @@ source("relabel.R")
 ## to define clustering/partition given vector of labels 'eta'
 sourceCpp("init_clustering.cpp")
 ## to compute log-likelihood of the different clusters in the partition
-sourceCpp("compute_loglikelihood_all_clusters_all_fields.cpp")
-sourceCpp("compute_loglikelihood_all_clusters_one_field.cpp")
-sourceCpp("compute_loglikelihood_one_cluster_one_field.cpp")
+#sourceCpp("compute_loglikelihood_all_clusters_all_fields.cpp")
+#sourceCpp("compute_loglikelihood_all_clusters_one_field.cpp")
+#sourceCpp("compute_loglikelihood_one_cluster_one_field.cpp")
 ## to perform full sweep of eta updates 
 sourceCpp("update_eta.cpp")
 ## to perform full sweep of theta updates

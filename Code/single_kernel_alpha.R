@@ -1,5 +1,4 @@
-library(Rcpp)
-sourceCpp('compute_loglikelihood_one_cluster_one_field.cpp')
+
 # ------------ auxiliary function converting beta diff and beta0 to alpha
 #
 # beta_diff is a matrix with n rows and p columns; each row denotes a cluster and each column denotes a variable

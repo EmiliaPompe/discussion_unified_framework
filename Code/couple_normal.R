@@ -26,16 +26,30 @@ rnorm_reflectionmxax <- function (mu1, mu2, sigma)
   return(list(xy = reflmax_xy, identical = ident_))
 }
 
-# mu1 <- 1
-# mu2 <- 2
-# sigma <- 0.5
-# 
-# coupledpoints <- lapply(1:1e4, function(index) rnorm_reflectionmxax(mu1, mu2, sigma))
-# mean(sapply(coupledpoints, function(l) l$identical))
-# coupledpoints_x <- sapply(coupledpoints, function(l) l$xy[1])
-# coupledpoints_y <- sapply(coupledpoints, function(l) l$xy[2])
-# 
-# hist(coupledpoints_x, prob = TRUE, nclass = 50, xlim = c(-2,5), main = '', xlab = '')
-# curve(dnorm(x, mu1, sigma), add = TRUE)
-# hist(coupledpoints_y, prob = TRUE, nclass = 50, add = TRUE, col = rgb(1,0,0,0.5))
-# curve(dnorm(x, mu2, sigma), add = TRUE, col = rgb(1,0,0))
+# the two functions below give sampling from the maximal coupling where the standard deviations 
+# are not necessarily the same
+
+get_max_coupling <- function(rp, dp, rq, dq){
+  function(){
+    x <- rp(1)
+    if (dp(x) + log(runif(1)) < dq(x)){
+      return(list(xy = c(x,x), identical = TRUE))
+    } else {
+      reject <- TRUE
+      y <- NA
+      while (reject){
+        y <- rq(1)
+        reject <- (dq(y) + log(runif(1)) < dp(y))
+      }
+      return(list(xy = c(x,y), identical = FALSE))
+    }
+  }
+}
+
+rnorm_max_coupling <- function(mu1, mu2, sigma1, sigma2){
+  f <- get_max_coupling(function(n) rnorm(n, mu1, sigma1),
+                        function(x) dnorm(x, mu1, sigma1, log = TRUE),
+                        function(n) rnorm(n, mu2, sigma2),
+                        function(x) dnorm(x, mu2, sigma2, log = TRUE))
+  return(f())
+}

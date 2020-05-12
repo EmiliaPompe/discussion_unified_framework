@@ -37,6 +37,64 @@ coupled_beta_0_update <- function(beta_diff_1,
   return(list(beta_0_1 = beta_0_1, beta_0_2 = beta_0_2, identical = identical))
 }
 
+
+
+halfcoupled_beta_aux_update <- function(beta_diff_j_l,
+                                        beta_0_l,
+                                        beta_0_l_gibbs,
+                                        l,
+                                        icluster, 
+                                        clustering,
+                                        theta_l, 
+                                        V,
+                                        s_sq,
+                                        partition_ll,
+                                        proposal_sd){
+  # we will perform a Gibbs update on one chain and a Metropolis-within-Gibbs one on the other
+  # we propose the new state from maximal coupling
+  current_state <- beta_diff_j_l
+  max_coupling <- rnorm_max_coupling(current_state, 0, proposal_sd, sqrt(s_sq))
+  # this is what we have for the chain with MwG update
+  proposed_state <- max_coupling$xy[1]
+  # calculating the corresponding value of alpha
+  exp_beta <- exp(beta_0_l + proposed_state)
+  proposed_alpha_j_l <- exp_beta/(exp_beta+1)
+  # common random number for acceptance/rejection
+  logu <- log(runif(1))
+  
+  # log likelihood taken from partition_ll + the prior
+  current_density <-  partition_ll[icluster, l] + dnorm(beta_diff_j_l, 0, sqrt(s_sq), log = TRUE)
+  proposed_density <- log_target_density_beta_prime(proposed_state, 
+                                                    l, icluster, 
+                                                    clustering, theta_l,
+                                                    V, proposed_alpha_j_l,
+                                                    s_sq)
+  
+  accept <- (logu < (proposed_density - current_density))
+  
+  if(accept){
+    current_state <- proposed_state 
+    alpha_j_l <- proposed_alpha_j_l
+  }else{
+    exp_beta <- exp(beta_0_l + current_state)
+    alpha_j_l <- exp_beta/(exp_beta+1)
+  }
+  # for the Gibbs update
+  gibbs_beta_j_l <- max_coupling$xy[2]
+  exp_beta <- exp(beta_0_l_gibbs + gibbs_beta_j_l)
+  gibbs_alpha_j_l <- exp_beta/(exp_beta+1)
+  
+  # whether the coupling has happened or not
+  identical <- accept && max_coupling$identical
+  
+  return(list(beta_diff_j_l = current_state, alpha_j_l = alpha_j_l,
+              gibbs_beta_j_l = gibbs_beta_j_l, gibbs_alpha_j_l = gibbs_alpha_j_l,
+              identical = identical))
+  
+}
+
+
+
 coupled_beta_aux_update <- function(beta_diff_j_l_1,
                                     beta_diff_j_l_2,
                                     beta_diff_j_l_ident,
@@ -121,6 +179,7 @@ coupled_beta_aux_update <- function(beta_diff_j_l_1,
 # ------------  function for performing an update of beta diff
 # beta_diff_j_l is a value of beta_diff for cluster j and field l
 # beta_0_l is a value of beta0 for field l
+
 # l, icluster, clustering, theta_l, V are used as arguments in compute_loglikelihood_one_cluster_one_field_cpp
 # partition_ll is an n x p matrix with current log-likelihood values for a given cluster and field
 # s_sq is a hyperparameter
@@ -158,9 +217,60 @@ coupled_beta_diff_update <- function(beta_diff_j_l_1,
                 alpha_j_l_1 = alpha_j_l_1,
                 alpha_j_l_2 = alpha_j_l_2,
                 beta_diff_identical = TRUE))
+  }else if(is.na(partition_ll_1[icluster, l])){
+    update <-  halfcoupled_beta_aux_update(beta_diff_j_l_2,
+                                           beta_0_l_2,
+                                           beta_0_l_1,
+                                           l,
+                                           icluster, 
+                                           clustering_2,
+                                           theta_l_2, 
+                                           V,
+                                           s_sq,
+                                           partition_ll_2,
+                                           proposal_sd)
+    
+    return(list(beta_diff_j_l_1 = update$gibbs_beta_j_l,
+                beta_diff_j_l_2 =update$beta_diff_j_l,
+                alpha_j_l_1 = update$gibbs_alpha_j_l,
+                alpha_j_l_2 = update$alpha_j_l,
+                beta_diff_identical = update$identical))
+    
+  }else if(is.na(partition_ll_2[icluster, l])){
+    update <-  halfcoupled_beta_aux_update(beta_diff_j_l_1,
+                                           beta_0_l_1,
+                                           beta_0_l_2,
+                                           l,
+                                           icluster, 
+                                           clustering_1,
+                                           theta_l_1, 
+                                           V,
+                                           s_sq,
+                                           partition_ll_1,
+                                           proposal_sd)
+    
+    return(list(beta_diff_j_l_1 = update$beta_j_l,
+                beta_diff_j_l_2 =update$gibbs_beta_diff_j_l,
+                alpha_j_l_1 = update$alpha_j_l,
+                alpha_j_l_2 = update$gibbs_alpha_j_l,
+                beta_diff_identical = update$identical))
   }else{
-    
-    
+    return(coupled_beta_aux_update(beta_diff_j_l_1,
+                                   beta_diff_j_l_2,
+                                   beta_diff_j_l_ident,
+                                   beta_0_l_1,
+                                   beta_0_l_2,
+                                   l,
+                                   icluster, 
+                                   clustering_1,
+                                   clustering_2,
+                                   theta_l_1, 
+                                   theta_l_2,
+                                   V,
+                                   s_sq,
+                                   partition_ll_1,
+                                   partition_ll_2,
+                                   proposal_sd))
     
   }
 }
@@ -168,6 +278,7 @@ coupled_beta_diff_update <- function(beta_diff_j_l_1,
 # ------------  function for performing the full update on beta0, alpha and (equivalently) beta_diff
 
 # beta_diff_1, beta_diff_2 are an n x p matrices with value of beta diff for a given cluster (row) and field (column)
+# beta_diff_identical an n x p matrix with TRUE/ FALSE indicating whether the values in of beta diff are the same for both chains
 # alpha_1, alpha_2 are an n x p matrices with value of alpha for a given cluster (row) and field (column)
 # beta_0_1, beta_0_2 are p-element vectors
 # clustering_1, clustering_2, V are used as arguments in compute_loglikelihood_one_cluster_one_field_cpp
