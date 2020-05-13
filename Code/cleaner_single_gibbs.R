@@ -139,7 +139,7 @@ for (imcmc in 1:nmcmc){
   partition_ll <- partition_ll[relabel_result$old_to_new,]
   alpha <- alpha[relabel_result$old_to_new,]
   beta_diff <- beta_diff[relabel_result$old_to_new,] 
-  ## update of 
+  ## update of N
 
   # ## random walk proposal
   # N_rw_stepsize <- 20
@@ -157,14 +157,14 @@ for (imcmc in 1:nmcmc){
   # N_history[imcmc] <- N
 
   ## truncate N to N_max
-  if (verbose) print("update N")
+  # if (verbose) print("update N")
   log_N_weights <- sapply(1 : N_max, function(NN) lfactorial(NN) - lfactorial(NN - partition$ksize) - (n+g) * log(NN) )
   max_log_N_weights <- max(log_N_weights)
   log_N_weights <- log_N_weights - max_log_N_weights
   N_weights <- exp(log_N_weights) / sum(exp(log_N_weights))
   N <- sample.int(n = N_max, size = 1, prob = N_weights)
   N_history[imcmc] <- N
-  if (verbose) print("update N done")
+  # if (verbose) print("update N done")
   
   # update of alpha, beta diff and beta0
   # we are storing both alpha and beta diff to avoid making unnecessary calculations
