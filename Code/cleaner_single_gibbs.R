@@ -77,7 +77,7 @@ s  <- sqrt(0.5)
 N_max <- 100000;
 
 ## number of MCMC iterations
-nmcmc <- 1e2
+nmcmc <- 1e5
 ## there should be update frequencies ... 
 
 ## whether to print some things during the run, or not
@@ -87,6 +87,7 @@ verbose <- TRUE
 N_history <- rep(NA, nmcmc)
 theta1_history <- matrix(NA, nrow = nmcmc, ncol = Mvec[1])
 beta0_history <- matrix(NA, nrow = nmcmc, ncol = p)
+ksize_history <- rep(NA, nmcmc)
 
 ## The state of the Markov chain  is (eta, N, b', b0, theta)
 
@@ -122,7 +123,7 @@ N_accept <- 0
 theta_accept <- rep(0, p)
 ## next iterate updates in the Gibbs sampler
 for (imcmc in 1:nmcmc){
-  if (verbose && (imcmc %% 1 == 0)) cat("iteration", imcmc, "/", nmcmc, "\n")
+  if (verbose && (imcmc %% 1 == 0)) cat("iteration", imcmc, "/", nmcmc, 'ksize = ', partition$ksize, 'N = ', N,  "\n")
   ## update of eta
   # print(N)
   # print(length(unique(eta)))
@@ -130,6 +131,7 @@ for (imcmc in 1:nmcmc){
   eta <- update_eta_result$eta
   partition_ll <- update_eta_result$clusterloglikelihoods
   partition <- update_eta_result$clustering
+  ksize_history[imcmc] <- partition$ksize
   # alpha <- update_eta_result$alpha
   ## relabel 
   relabel_result <- relabel2(eta, partition)
@@ -201,7 +203,6 @@ for (imcmc in 1:nmcmc){
   beta0 <- alpha_beta_update$beta0
   beta0_history[imcmc,] <- beta0
   print(mean(alpha_beta_update$acc_matrix, na.rm = TRUE))
- 
   
   ## update of theta
   ## note: prior on theta = uniform on simplex, equivalently Dirichlet(1,1,...,1)
@@ -215,7 +216,46 @@ for (imcmc in 1:nmcmc){
 cat(N_accept/nmcmc, "\n")
 cat(theta_accept/nmcmc, "\n")
 
+nburn <- floor(nmcmc / 2)
+## reproduce top-left plot of figure 2
+matplot(ksize_history, type = 'l')
+points(ksize_history)
+hist(ksize_history[nburn : nmcmc])
+## posterior of ksize
+ksize_posterior = table(ksize_history[nburn : nmcmc]) / length(ksize_history[nburn : nmcmc])
+ksize_posterior_names <- as.numeric(names(ksize_posterior))
+plot(ksize_posterior_names,ksize_posterior,xlim=c(410,495),xlab="k",type="b",lwd=1,cex.lab=2,main="",ylab="")
+## prior of ksize
+rzeta=function(a){
+  b=2^{a-1}
+  cond=TRUE
+  while(cond){
+    u=runif(1)
+    v=runif(1)
+    x=floor(u^(-1/(a-1)))
+    if (x==Inf) x=.Machine$double.xmax
+    t=(1+1/x)^(a-1)
+    cond=(v*x*(t-1)/(b-1)>t/b)
+  }
+  return(x)
+}
+NN2=c()
+for(i in 1:100000) NN2[i]=rzeta(1.02)
+k2=c()
+for(i in 1:100000) {
+  if (NN2[i]>.Machine$integer) k2[i]=length(unique(sample(.Machine$integer,size=500,rep=T)))
+  else k2[i]=length(unique(sample(NN2[i],size=500,rep=T)))
+}
+ksize_prior=table(k2)/length(k2)
+ksize_prior_names=as.numeric(names(ksize_prior))
+lines(ksize_prior_names,ksize_prior,col=2,lwd=2)
+
+## reproduce the top-right plot of figure 2
 matplot(N_history, type = 'l')
+points(N_history)
+hist(N_history[nburn : nmcmc])
+
+
 
 matplot(theta1_history[,1:2], type = 'l')
 abline(h = fieldfrequencies[[1]][1:2])
