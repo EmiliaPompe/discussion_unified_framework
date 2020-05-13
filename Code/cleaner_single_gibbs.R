@@ -168,19 +168,34 @@ for (imcmc in 1:nmcmc){
   
   # update of alpha, beta diff and beta0
   # we are storing both alpha and beta diff to avoid making unnecessary calculations
-  alpha_beta_update <- single_full_alpha_update(beta_diff = beta_diff, 
-                                                alpha = alpha,
-                                                beta_0 = beta0, 
-                                                clustering = partition,
-                                                theta_list = theta, 
-                                                V = V,
-                                                partition_ll = partition_ll,
-                                                mu_0 = m0, 
-                                                s_0_sq = s0^2,
-                                                s_sq = s^2,
-                                                proposal_sd = 1.5,
-                                                p = p,
-                                                n = n)
+  # alpha_beta_update <- single_full_alpha_update(beta_diff = beta_diff, 
+  #                                               alpha = alpha,
+  #                                               beta_0 = beta0, 
+  #                                               clustering = partition,
+  #                                               theta_list = theta, 
+  #                                               V = V,
+  #                                               partition_ll = partition_ll,
+  #                                               mu_0 = m0, 
+  #                                               s_0_sq = s0^2,
+  #                                               s_sq = s^2,
+  #                                               proposal_sd = 1.5,
+  #                                               p = p,
+  #                                               n = n)
+  
+  alpha_beta_update <- single_full_alpha_update_cl_size(beta_diff = beta_diff,
+                                                        alpha = alpha,
+                                                        beta_0 = beta0,
+                                                        clustering = partition,
+                                                        theta_list = theta,
+                                                        V = V,
+                                                        partition_ll = partition_ll,
+                                                        mu_0 = m0,
+                                                        s_0_sq = s0^2,
+                                                        s_sq = s^2,
+                                                        proposal_sd = sqrt(0.5),
+                                                        p = p,
+                                                        n = n,
+                                                        partition$clsize)
   alpha <- alpha_beta_update$alpha
   beta_diff <- alpha_beta_update$beta_diff
   beta0 <- alpha_beta_update$beta0
@@ -232,5 +247,5 @@ p1
 p2
 library(gridExtra)
 grid.arrange(p1, p2, ncol =2)
-ggsave('single_chain_N_hist_traceplot.png', grid.arrange(p1, p2, ncol =2), height = 6, width =10)
+#ggsave('single_chain_N_hist_traceplot.png', grid.arrange(p1, p2, ncol =2), height = 6, width =10)
 

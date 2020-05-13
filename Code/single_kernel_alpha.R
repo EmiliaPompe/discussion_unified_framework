@@ -141,6 +141,59 @@ single_beta_diff_update <- function(beta_diff_j_l,
   return(list(beta_diff_j_l = current_state, alpha_j_l = alpha_j_l, accept = accept))
 }
 
+
+# ------------the same function as above but including cluster size in the proposal
+#cl_size_j size of cluster j
+
+single_beta_diff_update_cl_size <- function(beta_diff_j_l,
+                                            beta_0_l,
+                                            l,
+                                            icluster, 
+                                            clustering,
+                                            theta_l, 
+                                            V,
+                                            s_sq,
+                                            partition_ll,
+                                            proposal_sd,
+                                            cl_size_j){
+  # NA in this cluster means the cluster is empty so we are drawing from the prior
+  if(is.na(partition_ll[icluster, l])){
+    beta_diff_j_l <- rnorm(1, 0, sqrt(s_sq))
+    exp_beta <- exp(beta_0_l +beta_diff_j_l )
+    alpha_j_l <- exp_beta/(exp_beta+1)
+    return(list(beta_diff_j_l = beta_diff_j_l, alpha_j_l = alpha_j_l, accept = NA))
+  }
+  
+  current_state <- beta_diff_j_l
+  proposed_state <- rnorm(1, current_state, proposal_sd/max(1,cl_size_j))
+  # calculating the corresponding value of alpha
+  exp_beta <- exp(beta_0_l + proposed_state)
+  proposed_alpha_j_l <- exp_beta/(exp_beta+1)
+  # common random number for acceptance/rejection
+  logu <- log(runif(1))
+  
+  # lok likelihood taken from partition_ll + the prior
+  current_density <-  partition_ll[icluster, l] + dnorm(beta_diff_j_l, 0, sqrt(s_sq), log = TRUE)
+  proposed_density <- log_target_density_beta_prime(proposed_state, 
+                                                    l, icluster, 
+                                                    clustering, theta_l,
+                                                    V, proposed_alpha_j_l,
+                                                    s_sq)
+  
+  accept <- (logu < (proposed_density - current_density))
+  
+  if(accept){
+    current_state <- proposed_state 
+    alpha_j_l <- proposed_alpha_j_l
+  }else{
+    exp_beta <- exp(beta_0_l + current_state)
+    alpha_j_l <- exp_beta/(exp_beta+1)
+  }
+  
+  return(list(beta_diff_j_l = current_state, alpha_j_l = alpha_j_l, accept = accept))
+}
+
+
 # ------------  function for performing the full update on beta0, alpha and (equivalently) beta_diff
 
 # beta_diff is an n x p matrix with value of beta diff for a given cluster (row) and field (column)
@@ -192,6 +245,58 @@ single_full_alpha_update <- function(beta_diff,
                                              s_sq = s_sq,
                                              partition_ll = partition_ll,
                                              proposal_sd = proposal_sd)
+      new_beta_diff[icluster, l] <- result_list$beta_diff_j_l
+      new_alpha[icluster, l] <- result_list$alpha_j_l
+      acc_matrix[icluster, l] <- result_list$accept
+    }
+  }
+  return(list(beta_diff = new_beta_diff, alpha = new_alpha, beta0 = beta_0, acc_matrix = acc_matrix))
+  
+}
+
+
+# ------------the same function as above but including sample size in proposal for beta_diff
+# cl_size vector of cluster sizes
+# other arguments as above
+single_full_alpha_update_cl_size <- function(beta_diff,
+                                             alpha,
+                                             beta_0,
+                                             clustering,
+                                             theta_list, 
+                                             V,
+                                             partition_ll,
+                                             mu_0, 
+                                             s_0_sq,
+                                             s_sq,
+                                             proposal_sd,
+                                             p,
+                                             n,
+                                             cl_size){
+  # updating beta_0 
+  beta_0_update <- single_beta_0_update(beta_diff, beta_0, mu_0, s_0_sq, s_sq)
+  beta_0 <- beta_0_update$beta_0
+  
+  # matrices for storing new values
+  new_beta_diff <- matrix(NA, ncol = p, nrow = n)
+  new_alpha <- matrix(NA, ncol = p, nrow = n)
+  acc_matrix <- matrix(NA, ncol = p, nrow = n)
+  
+  for(l in 1:p){
+    theta_l <- theta_list[[l]]
+    beta_0_l <- beta_0[l]
+    for(icluster in 1:n){
+      # update of beta prime and simultaneoulsy alpha
+      result_list <- single_beta_diff_update_cl_size(beta_diff_j_l = beta_diff[icluster, l],
+                                                     beta_0_l = beta_0_l,
+                                                     l = l,
+                                                     icluster = icluster, 
+                                                     clustering = clustering,
+                                                     theta_l = theta_l, 
+                                                     V = V,
+                                                     s_sq = s_sq,
+                                                     partition_ll = partition_ll,
+                                                     proposal_sd = proposal_sd,
+                                                     cl_size_j = cl_size[icluster])
       new_beta_diff[icluster, l] <- result_list$beta_diff_j_l
       new_alpha[icluster, l] <- result_list$alpha_j_l
       acc_matrix[icluster, l] <- result_list$accept
