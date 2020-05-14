@@ -77,7 +77,7 @@ s  <- sqrt(0.5)
 N_max <- 100000;
 
 ## number of MCMC iterations
-nmcmc <- 1e5
+nmcmc <- 1e4
 ## there should be update frequencies ... 
 
 ## whether to print some things during the run, or not
@@ -218,8 +218,8 @@ cat(theta_accept/nmcmc, "\n")
 
 nburn <- floor(nmcmc / 2)
 ## reproduce top-left plot of figure 2
-matplot(ksize_history, type = 'l')
-points(ksize_history)
+matplot(ksize_history[nburn : nmcmc], type = 'l')
+points(ksize_history[nburn : nmcmc])
 hist(ksize_history[nburn : nmcmc])
 ## posterior of ksize
 ksize_posterior = table(ksize_history[nburn : nmcmc]) / length(ksize_history[nburn : nmcmc])
@@ -251,8 +251,8 @@ ksize_prior_names=as.numeric(names(ksize_prior))
 lines(ksize_prior_names,ksize_prior,col=2,lwd=2)
 
 ## reproduce the top-right plot of figure 2
-matplot(N_history, type = 'l')
-points(N_history)
+matplot(N_history[nburn : nmcmc], type = 'l')
+points(N_history[nburn : nmcmc])
 hist(N_history[nburn : nmcmc])
 
 
