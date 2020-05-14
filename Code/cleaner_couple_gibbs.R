@@ -3,6 +3,7 @@
 rm(list = ls())
 set.seed(1)
 ## load packages
+library(clusteval)
 library(Rcpp)
 library(ggplot2)
 ## set graphical themes
@@ -72,7 +73,7 @@ source("couple_theta.R")
 ## to perform coupled update of N
 ## it uses truncation of N to N_max (define a s a hyper parameter below)
 source("couple_N.R")
-
+source('coupled_kernel_alpha.R')
 ## hyper parameter specification
 ## prior parameter for N 
 g <- 1.02
@@ -124,6 +125,7 @@ for (field in 1:p){
 	beta_diff1[,field] <- rnorm(n, 0, s)
 	beta_diff2[,field] <- rnorm(n, 0, s)
 }
+beta_diff_identical <- matrix(FALSE, nrow = n, ncol = p)
 ## compute alphas
 alpha1 <- beta_to_alpha(beta_diff1, beta0_chain1)
 alpha2 <- beta_to_alpha(beta_diff2, beta0_chain2)
@@ -178,7 +180,36 @@ for (imcmc in 1 : nmcmc){
 	cluster_distance_history[imcmc] <- clusteval::cluster_similarity(eta1,eta2)
 	if (verbose && (imcmc %% 1 == 0)) cat("iteration", imcmc, "/", nmcmc, 'cluster distance = ', clusteval::cluster_similarity(eta1,eta2), "\n")
 	## update alpha 
-	## to be added 
+	couple_alpha_result <- coupled_full_alpha_update(beta_diff_1 = beta_diff1,
+	                                                 beta_diff_2 = beta_diff2,
+	                                                 beta_diff_identical = beta_diff_identical,
+	                                                 alpha_1 = alpha1,
+	                                                 alpha_2 = alpha2,
+	                                                 beta_0_1 = beta0_chain1,
+	                                                 beta_0_2 = beta0_chain2,
+	                                                 clustering_1 = partition1,
+	                                                 clustering_2 = partition2,
+	                                                 theta_list_1 = theta1, 
+	                                                 theta_list_2 = theta2,
+	                                                 V = V,
+	                                                 partition_ll_1 = partition_ll1,
+	                                                 partition_ll_2 = partition_ll2,
+	                                                 mu_0 = m0, 
+	                                                 s_0_sq = s0^2,
+	                                                 s_sq = s^2,
+	                                                 proposal_sd = sqrt(0.5),
+	                                                 p = p,
+	                                                 n = n,
+	                                                 cl_size_1 = partition1$clsize,
+	                                                 cl_size_2 = partition2$clsize) 
+	beta0_chain1 <- couple_alpha_result$beta_0_1
+	beta0_chain2 <- couple_alpha_result$beta_0_2
+	beta_0_identical <- couple_alpha_result$beta_0_identical
+	beta_diff1 <- couple_alpha_result$beta_diff_1
+	beta_diff2 <- couple_alpha_result$beta_diff_2
+	beta_diff_identical <- couple_alpha_result$beta_diff_identical
+	alpha1 <- couple_alpha_result$alpha_1
+	alpha2 <- couple_alpha_result$alpha_2
 	
 	## update theta
 	couple_theta_result <- couple_theta(theta1, theta2, partition1, partition2, partition_ll1, partition_ll2, alpha1, alpha2)

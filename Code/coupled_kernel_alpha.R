@@ -1,6 +1,6 @@
 library(Rcpp)
 source('couple_normal.R')
-sourceCpp('single_kernel_alpha.R')
+source('single_kernel_alpha.R')
 
 
 # ------------ update of beta0 (coupled kernel)
@@ -17,11 +17,12 @@ coupled_beta_0_update <- function(beta_diff_1,
                                   mu_0, 
                                   s_0_sq,
                                   s_sq,
+                                  p,
                                   n){
   # using the formula for the posterior variance in the Normal-Normal model
   common_var <- 1/(1/s_0_sq + n/s_sq)
   
-  result <- lapply(1:ncol(beta_diff), function(l){
+  result <- lapply(1:p, function(l){
     # calculating beta_prime as previous_beta_0 + new differences
     beta_prime_1 <- beta_0_1[l] + beta_diff_1[,l]
     beta_prime_2 <- beta_0_2[l] + beta_diff_2[,l]
@@ -49,11 +50,12 @@ halfcoupled_beta_aux_update <- function(beta_diff_j_l,
                                         V,
                                         s_sq,
                                         partition_ll,
-                                        proposal_sd){
+                                        proposal_sd,
+                                        cl_size_j){
   # we will perform a Gibbs update on one chain and a Metropolis-within-Gibbs one on the other
   # we propose the new state from maximal coupling
   current_state <- beta_diff_j_l
-  max_coupling <- rnorm_max_coupling(current_state, 0, proposal_sd, sqrt(s_sq))
+  max_coupling <- rnorm_max_coupling(current_state, 0, proposal_sd/max(1,cl_size_j), sqrt(s_sq))
   # this is what we have for the chain with MwG update
   proposed_state <- max_coupling$xy[1]
   # calculating the corresponding value of alpha
@@ -88,7 +90,7 @@ halfcoupled_beta_aux_update <- function(beta_diff_j_l,
   identical <- accept && max_coupling$identical
   
   return(list(beta_diff_j_l = current_state, alpha_j_l = alpha_j_l,
-              gibbs_beta_j_l = gibbs_beta_j_l, gibbs_alpha_j_l = gibbs_alpha_j_l,
+              gibbs_beta_diff_j_l = gibbs_beta_j_l, gibbs_alpha_j_l = gibbs_alpha_j_l,
               identical = identical))
   
 }
@@ -110,14 +112,17 @@ coupled_beta_aux_update <- function(beta_diff_j_l_1,
                                     s_sq,
                                     partition_ll_1,
                                     partition_ll_2,
-                                    proposal_sd){
+                                    proposal_sd,
+                                    cl_size_j_1,
+                                    cl_size_j_2){
   # drawing proposals from maximal coupling
-  max_coupling <- rnorm_reflectionmxax(beta_diff_j_l_1,
-                                       beta_diff_j_l_2,
-                                       proposal_sd)
+  max_coupling <- rnorm_max_coupling(beta_diff_j_l_1,
+                                     beta_diff_j_l_2,
+                                     proposal_sd/max(1,cl_size_j_1),
+                                     proposal_sd/max(1,cl_size_j_2))
   # proposed beta diff and alpha for both chains
   prop_beta_1 <- max_coupling$xy[1]
-  prob_beta_2 <- max_coupling$xy[2]
+  prop_beta_2 <- max_coupling$xy[2]
   
   exp_beta_1 <- exp(beta_0_l_1 + prop_beta_1)
   prop_alpha_1 <- exp_beta_1/(exp_beta_1+1)
@@ -142,8 +147,8 @@ coupled_beta_aux_update <- function(beta_diff_j_l_1,
   # acceptance/rejection for chain 1
   accept1 <- (logu < (proposed_density_1 - current_density_1))
   if(accept1){
-    beta_diff_j_l_1 <- prob_beta_1
-    alpha_j_l_1 <- prob_alpha_1
+    beta_diff_j_l_1 <- prop_beta_1
+    alpha_j_l_1 <- prop_alpha_1
   }else{
     exp_beta_1 <- exp(beta_0_l_1 + beta_diff_j_l_1)
     alpha_j_l_1 <- exp_beta_1/(exp_beta_1+1) 
@@ -153,8 +158,8 @@ coupled_beta_aux_update <- function(beta_diff_j_l_1,
   accept2 <- (logu < (proposed_density_2 - current_density_2))
   
   if(accept2){
-    beta_diff_j_l_2 <- prob_beta_2
-    alpha_j_l_2 <- prob_alpha_2
+    beta_diff_j_l_2 <- prop_beta_2
+    alpha_j_l_2 <- prop_alpha_2
   }else{
     exp_beta_2 <- exp(beta_0_l_2 + beta_diff_j_l_2)
     alpha_j_l_2 <- exp_beta_2/(exp_beta_2+1) 
@@ -201,7 +206,9 @@ coupled_beta_diff_update <- function(beta_diff_j_l_1,
                                      s_sq,
                                      partition_ll_1,
                                      partition_ll_2,
-                                     proposal_sd){
+                                     proposal_sd,
+                                     cl_size_1,
+                                     cl_size_2){
   # NA in this cluster means the cluster is empty so we are drawing from the prior
   # in this case we can always couple 
   if(is.na(partition_ll_1[icluster, l]) && is.na(partition_ll_2[icluster, l])){
@@ -228,9 +235,10 @@ coupled_beta_diff_update <- function(beta_diff_j_l_1,
                                            V,
                                            s_sq,
                                            partition_ll_2,
-                                           proposal_sd)
+                                           proposal_sd,
+                                           cl_size_2[icluster])
     
-    return(list(beta_diff_j_l_1 = update$gibbs_beta_j_l,
+    return(list(beta_diff_j_l_1 = update$gibbs_beta_diff_j_l,
                 beta_diff_j_l_2 =update$beta_diff_j_l,
                 alpha_j_l_1 = update$gibbs_alpha_j_l,
                 alpha_j_l_2 = update$alpha_j_l,
@@ -247,9 +255,10 @@ coupled_beta_diff_update <- function(beta_diff_j_l_1,
                                            V,
                                            s_sq,
                                            partition_ll_1,
-                                           proposal_sd)
+                                           proposal_sd,
+                                           cl_size_1[icluster])
     
-    return(list(beta_diff_j_l_1 = update$beta_j_l,
+    return(list(beta_diff_j_l_1 = update$beta_diff_j_l,
                 beta_diff_j_l_2 =update$gibbs_beta_diff_j_l,
                 alpha_j_l_1 = update$alpha_j_l,
                 alpha_j_l_2 = update$gibbs_alpha_j_l,
@@ -270,7 +279,9 @@ coupled_beta_diff_update <- function(beta_diff_j_l_1,
                                    s_sq,
                                    partition_ll_1,
                                    partition_ll_2,
-                                   proposal_sd))
+                                   proposal_sd,
+                                   cl_size_1[icluster],
+                                   cl_size_2[icluster]))
     
   }
 }
@@ -309,11 +320,14 @@ coupled_full_alpha_update <- function(beta_diff_1,
                                       s_sq,
                                       proposal_sd,
                                       p,
-                                      n){
+                                      n,
+                                      cl_size_1,
+                                      cl_size_2){
   # updating beta_0 
   beta_0_update <- coupled_beta_0_update(beta_diff_1, beta_diff_2,
                                          beta_0_1, beta_0_2,
-                                         mu_0, s_0_sq, s_sq, n)
+                                         mu_0, s_0_sq, s_sq,
+                                         p, n)
   beta_0_1 <- beta_0_update$beta_0_1
   beta_0_2 <- beta_0_update$beta_0_2
   
@@ -332,18 +346,26 @@ coupled_full_alpha_update <- function(beta_diff_1,
     beta_0_l_2 <- beta_0_2[l]
     for(icluster in 1:n){
       # update of beta prime and simultaneoulsy alpha
-      # change this!!!!!
-      result_list <- single_beta_diff_update(beta_diff_j_l = beta_diff[icluster, l],
-                                             beta_0_l = beta_0_l,
-                                             l = l,
-                                             icluster = icluster, 
-                                             clustering = clustering,
-                                             theta_l = theta_l, 
-                                             V = V,
-                                             s_sq = s_sq,
-                                             partition_ll = partition_ll,
-                                             proposal_sd = proposal_sd)
-      
+ 
+      result_list <- coupled_beta_diff_update(beta_diff_j_l_1 = beta_diff_1[icluster, l],
+                                              beta_diff_j_l_2 = beta_diff_2[icluster, l],
+                                              beta_diff_j_l_ident = beta_diff_identical[icluster, l],
+                                              beta_0_l_1 =  beta_0_l_1,
+                                              beta_0_l_2 =  beta_0_l_2,
+                                              l = l,
+                                              icluster = icluster, 
+                                              clustering_1 = clustering_1,
+                                              clustering_2 = clustering_2,
+                                              theta_l_1 = theta_l_1, 
+                                              theta_l_2 = theta_l_2,
+                                              V = V,
+                                              s_sq = s_sq,
+                                              partition_ll_1 = partition_ll_1,
+                                              partition_ll_2 = partition_ll_2,
+                                              proposal_sd = proposal_sd,
+                                              cl_size_1 = cl_size_1,
+                                              cl_size_2 = cl_size_2)
+     
       new_beta_diff_1[icluster, l] <- result_list$beta_diff_j_l_1
       new_alpha_1[icluster, l] <- result_list$alpha_j_l_1
       new_beta_diff_2[icluster, l] <- result_list$beta_diff_j_l_2
@@ -352,9 +374,9 @@ coupled_full_alpha_update <- function(beta_diff_1,
     }
   }
   return(list(beta_diff_1 = new_beta_diff_1, beta_diff_2 = new_beta_diff_2,
-              new_beta_diff_identical = new_beta_diff_identical,
+              beta_diff_identical = new_beta_diff_identical,
               alpha_1 = new_alpha_1, alpha_2 = new_alpha_2,
-              beta0_1 = beta_0_1, beta0_2 = beta_0_2, 
+              beta_0_1 = beta_0_1, beta_0_2 = beta_0_2, 
               beta_0_identical =   beta_0_update$identical))
   
 }
