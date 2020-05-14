@@ -81,7 +81,7 @@ List compute_include_exclude_cpp(const int  j,
 				if( logprod <= lprob_withj){
 					lprob_withoutj =  log(exp(lprob_withj) - exp(logprod)) - log(alpha(q,l)) - log(theta_field[V(j,l)]); 
 				}else{
-					Rprintf("will come back to this error \n");
+					// Rprintf("will come back to this error \n");
 					lprob_withoutj = lprob_withj;
 				}
 				logprob_include(q,l) = lprob_withj;
