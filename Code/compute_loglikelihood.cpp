@@ -299,8 +299,8 @@ List update_eta_cpp(const IntegerVector eta_previous,
       if (clsize[icluster] == 0){
         // i.e. P(eta[ieta] = q) where q is the label of a new block
         logproba_eta[icluster] = sum(uponetajoining_loglikelihood.row(icluster));
-        logproba_eta[icluster] += (log(N-ksize)); // CAREFUL CHECK - log(n-ksize));
-        // logproba_eta[icluster] += (log(N-ksize) - log(n-ksize)); // CAREFUL CHECK
+        // logproba_eta[icluster] += (log(N-ksize)); // CAREFUL CHECK - log(n-ksize));
+        logproba_eta[icluster] += (log(N-ksize) - log(n-ksize)); // CAREFUL CHECK!!
         // note that when N = ksize this should be -Inf so it becomes impossible to create a new cluster 
       } else {
         logproba_eta[icluster] = sum(uponetajoining_loglikelihood.row(icluster) - clusterloglikelihoods.row(icluster));

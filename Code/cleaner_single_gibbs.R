@@ -41,6 +41,7 @@ fieldfrequencies <- fieldfrequencies[1:10]
 ## define dimensions of V
 n <- dim(V)[1]
 p <- dim(V)[2]
+g <- 1.1
 
 ## get some 'ground truth'
 # MATCH=outer(myRLDATA$id, myRLDATA$id, FUN="==")
@@ -69,7 +70,7 @@ expit <- function(x) exp(x)/(1+exp(x))
 
 ## hyper parameter specification
 ## prior parameter for N 
-g <- 1.02
+# g <- 1.02
 ## prior parameter for beta_0
 m0 <- logit(0.01)
 s0 <- sqrt(0.1)
@@ -84,7 +85,7 @@ lns_precomp <-  sapply(0:N_max, function(NN) log(NN))
 
 
 ## number of MCMC iterations
-nmcmc <- 1e2
+nmcmc <- 1e4
 ## there should be update frequencies ... 
 
 ## whether to print some things during the run, or not
@@ -248,8 +249,11 @@ matplot(ksize_history[nburn : nmcmc], type = 'l')
 plot(N_history, type = "l")
 
 matplot(beta_0_history, type = 'l')
+# 
+matplot(theta1_history, type = 'l')
 
-# matplot(theta1_history, type = 'l')
+
+save(N_history, beta_0_history, theta1_history, ksize_history, nmcmc, file = "~/cleanergibbs_run1.RData")
 
 ## prior of ksize
 # rzeta=function(a){
