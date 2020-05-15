@@ -11,7 +11,8 @@ update_theta <- function(theta, partition, partition_ll, alpha){
     cl_log_lik <- partition_ll[,l] 
     ## dirichlet proposal
     x_propose <- gtools::rdirichlet(1, alpha = (1 + concentration * x))[1,]
-    cl_log_lik_new <- compute_loglikelihood_all_clusters_one_field_cpp(l - 1, partition, x_propose, V - 1, alpha)
+    logx_propose <- log(x_propose)
+    cl_log_lik_new <- compute_loglikelihood_all_clusters_one_field_cpp(l - 1, partition, x_propose, logx_propose, V - 1, alpha)
     ## transition ratio 
     lratio <- log(gtools::ddirichlet(x = x, alpha = (1 + concentration * x_propose))) - log(gtools::ddirichlet(x = x_propose, alpha = (1 + concentration * x)))
     ## log accept probability

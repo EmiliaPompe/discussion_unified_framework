@@ -5,6 +5,7 @@ using namespace Rcpp;
 double ll_cluster_field(int clustersize, 
                         const IntegerVector & clmembers,
                         const NumericVector & theta_l, 
+                        const NumericVector & logtheta_l, 
                         const IntegerVector & Vfield, const double a){
   double log_likelihood = NA_REAL ; 
   double logprod,max_logs;
@@ -19,7 +20,7 @@ double ll_cluster_field(int clustersize,
     // first member (associated row in V)
     j = clmembers(0);
     // recall theta_l[ V(j,field)] is theta_{l, v(j,l)} in the paper
-    log_likelihood += log(theta_l[Vfield(j)]);
+    log_likelihood += logtheta_l[Vfield(j)];
     if (log_likelihood > 1){
       // if more members, implement recursion
       // loop over remaining members
@@ -29,7 +30,7 @@ double ll_cluster_field(int clustersize,
         logprod = 0.;
         // to implement first part of recursion
         // multiply by associated alpha' * theta_l[V(q,l)]
-        log_likelihood += loga + log(theta_l[Vfield(q)]);
+        log_likelihood += loga + logtheta_l[Vfield(q)];
         // next, implement second part of recursion
         for (int othermember = 0; othermember < imember; othermember ++){
           qprime = clmembers(othermember);
@@ -39,7 +40,7 @@ double ll_cluster_field(int clustersize,
           }
           logprod += log((1 - a) * sameV + a * theta_l[Vfield(qprime)]);
         }
-        logprod += log1minusa + log(theta_l[Vfield(q)]);
+        logprod += log1minusa + logtheta_l[Vfield(q)];
         max_logs = std::max(logprod, log_likelihood);
         log_likelihood = max_logs + log(exp(logprod - max_logs) + exp(log_likelihood - max_logs));
       }
@@ -63,6 +64,7 @@ double compute_loglikelihood_one_cluster_one_field_cpp(int l ,
                                                        int icluster, 
                                                        const List & clustering,
                                                        const NumericVector & theta_l,
+                                                       const NumericVector & logtheta_l,
                                                        const IntegerMatrix & V,
                                                        const double a) {
   const IntegerVector & clsize = clustering["clsize"];
@@ -71,6 +73,7 @@ double compute_loglikelihood_one_cluster_one_field_cpp(int l ,
   log_likelihood = ll_cluster_field(clsize[icluster], 
                                     clmembers(icluster,_),
                                     theta_l, 
+                                    logtheta_l,
                                     V(_,l), a);
   return log_likelihood;
 }
@@ -87,6 +90,7 @@ double compute_loglikelihood_one_cluster_one_field_cpp(int l ,
 // [[Rcpp::export]]
 NumericMatrix compute_loglikelihood_all_clusters_all_fields_cpp(const List & clustering,
                                                                 const List & theta,
+                                                                const List & logtheta,
                                                                 const IntegerMatrix & V,
                                                                 const NumericMatrix & alpha) {
   
@@ -105,7 +109,7 @@ NumericMatrix compute_loglikelihood_all_clusters_all_fields_cpp(const List & clu
     } else {
       for (int field = 0; field < p; field++){
         clusterloglikelihoods(icluster, field) = ll_cluster_field(clsize[icluster],  clmembers(icluster,_),
-                              theta[field], V(_,field), alpha(icluster, field));
+                              theta[field], logtheta[field], V(_,field), alpha(icluster, field));
       }
     }
   }
@@ -125,6 +129,7 @@ NumericMatrix compute_loglikelihood_all_clusters_all_fields_cpp(const List & clu
 NumericVector compute_loglikelihood_all_clusters_one_field_cpp(int l ,
                                                                const List & clustering,
                                                                const NumericVector & theta_l,
+                                                               const NumericVector & logtheta_l,
                                                                const IntegerMatrix & V,
                                                                const NumericMatrix & alpha) {
   
@@ -143,7 +148,7 @@ NumericVector compute_loglikelihood_all_clusters_one_field_cpp(int l ,
       // do nothing
     } else {
       cl_likelihood_field(icluster) = ll_cluster_field(clsize[icluster],  clmembers(icluster,_),
-                          theta_l, V(_,l), alpha(icluster, l));
+                          theta_l, logtheta_l, V(_,l), alpha(icluster, l));
     }
   }
   return cl_likelihood_field;
@@ -162,26 +167,32 @@ NumericVector compute_loglikelihood_all_clusters_one_field_cpp(int l ,
 // * alpha, corruption probabilities for each field and cluster
 // * N
 // [[Rcpp::export]]
-List update_eta_cpp(const IntegerVector eta_previous,
-                    const List  clustering_previous,
-                    const NumericMatrix ll_previous,
+List update_eta_cpp(IntegerVector & eta,
+                    List & clustering,
+                    NumericMatrix & clusterloglikelihoods,
+                    NumericMatrix & uponetajoining_loglikelihood,
                     const List & theta,
+                    const List & logtheta,
                     const IntegerMatrix & V,
                     const IntegerVector & dimV,
                     const NumericMatrix & alpha,
-                    int N,
-                    const NumericVector & beta0, double s) {
-  IntegerVector clsize = clone(wrap(clustering_previous["clsize"]));
-  IntegerMatrix clmembers = clone(wrap(clustering_previous["clmembers"]));
-  IntegerVector ksize_vec = clone(wrap(clustering_previous["ksize"]));
-  NumericMatrix new_alpha = clone(wrap(alpha));
+                    int N) {
+  IntegerVector clsize = clustering["clsize"];
+  IntegerMatrix clmembers = clustering["clmembers"];
+  IntegerVector ksize_vec = clustering["ksize"];
   int ksize = ksize_vec(0);
   //
   int n = V.nrow();
   int p = V.ncol();
-  NumericMatrix clusterloglikelihoods = clone(wrap(ll_previous));
+  // NumericMatrix clusterloglikelihoods = clone(wrap(ll));
   // 
-  IntegerVector eta = clone(wrap(eta_previous));
+  NumericVector newblock_loglikelihood = no_init(p);
+  NumericVector theta_field;
+  NumericVector logtheta_field;
+  // NumericMatrix uponetajoining_loglikelihood = no_init(n,p);
+  NumericVector logproba_eta = no_init(n);
+  NumericVector uniform;
+  
   // loop over components of eta
   for (int ieta = 0; ieta < n; ieta++){
     int label = eta[ieta];
@@ -209,67 +220,20 @@ List update_eta_cpp(const IntegerVector eta_previous,
       // remove log-likelihoods associated with that cluster
       std::fill(clusterloglikelihoods.row(label).begin(), clusterloglikelihoods.row(label).end(), NA_REAL);
       // remove corresponding alpha
-      // std::fill(new_alpha.row(label).begin(), new_alpha.row(label).end(), R_NegInf);
     } else {
-      // recompute likelihood of cluster from scratch,
-      // NumericVector cl_likelihood_field(p);
-      // std::fill(cl_likelihood_field.begin(), cl_likelihood_field.end(), 0.0);
+      // recompute likelihood of cluster from scratch
       for (int field = 0; field < p; field ++){
         clusterloglikelihoods(label,field) = compute_loglikelihood_one_cluster_one_field_cpp(field,
-                            label, clustering_previous, theta[field], V, new_alpha(label,field));
+                            label, clustering, theta[field], logtheta[field], V, alpha(label,field));
       }        
-      
-      // // compute likelihood recursively over members of cluster
-      // // first member (associated row in V)
-      // int j = clmembers(label,0);
-      // for (int l = 0; l < p; l++){
-      //   NumericVector theta_field = theta[l];
-      //   // recall p[cumdime[l] + V(j,l)] is theta_{l, v(j,l)} in the paper
-      //   cl_likelihood_field(l) += log(theta_field(V(j,l)));
-      // }
-      // if (clsize[label] > 1){
-      //   // if more members, implement recursion
-      //   // loop over remaining members
-      //   for (int imember = 1; imember < clsize[label]; imember++){
-      //     // original index of that member (i.e. corresponding row in V)
-      //     int q = clmembers(label,imember);
-      //     // loop over fields 
-      //     for (int l = 0; l < p; l++){
-      //       NumericVector theta_field = theta[l];
-      //       double logprod = 0.;
-      //       // to implement first part of recursion
-      //       // multiply by associated alpha' * V(q,l)
-      //       cl_likelihood_field(l) += log(new_alpha(label,l) * theta_field(V(q,l)));
-      //       // next, implement second part of recursion
-      //       for (int othermember = 0; othermember < imember; othermember ++){
-      //         int qprime = clmembers(label,othermember);
-      //         int sameV = 0;
-      //         if (V(q,l) == V(qprime,l)){
-      //           sameV = 1;
-      //         }
-      //         logprod += log((1 - new_alpha(label,l)) * sameV + new_alpha(label,l) * theta_field(V(qprime,l)));
-      //       }
-      //       logprod += log((1 - new_alpha(label,l)) * theta_field(V(q,l)));
-      //       // next we need to define exp(logprod) + exp(cl_likelihood_field(l))
-      //       double max_logs = std::max(logprod, cl_likelihood_field(l));
-      //       cl_likelihood_field(l) = max_logs + log(exp(logprod - max_logs) + exp(cl_likelihood_field(l) - max_logs));
-      //     }
-      //   }
-      // }
-      // for (int l = 0; l < p; l++){
-      //   clusterloglikelihoods(label,l) = cl_likelihood_field(l);
-      // }
     }
     // now we have a clustering and associated log likelihoods as if we did not have eta[ieta] in the partition
     // next we can compute the likelihood associated with a new block with that label in it
-    NumericVector newblock_loglikelihood(p, 0.);
     for (int l = 0; l < p; l++){
-      NumericVector theta_field = theta[l];
-      newblock_loglikelihood(l) = log(theta_field(V(ieta,l)));
+      logtheta_field = logtheta[l];
+      newblock_loglikelihood(l) = logtheta_field(V(ieta,l));
     }
-    NumericMatrix uponetajoining_loglikelihood(n,p);
     // vector to aggregate likelihood and prior probabilities for new label
-    NumericVector logproba_eta(n);
     std::fill(logproba_eta.begin(), logproba_eta.end(), 0.);
     // next we loop over clusters
     for (int icluster = 0; icluster < n; icluster ++){
@@ -280,17 +244,18 @@ List update_eta_cpp(const IntegerVector eta_previous,
       } else {
         // this would be an existing cluster
         for (int l = 0; l < p; l++){
-          NumericVector theta_field = theta[l];
+          theta_field = theta[l];
+          logtheta_field = logtheta[l];
           // first part of recursion
-          uponetajoining_loglikelihood(icluster, l) = log(new_alpha(icluster,l) * theta_field(V(ieta,l))) + 
+          uponetajoining_loglikelihood(icluster, l) = log(alpha(icluster,l)) + logtheta_field(V(ieta,l)) + 
             clusterloglikelihoods(icluster,l);
           double logprod = 0.;
           // next, implement second part of recursion
           for (int clustermember = 0; clustermember < clsize[icluster]; clustermember ++){
             int qprime = clmembers(icluster, clustermember);
-            logprod += log((1 - new_alpha(icluster,l)) * (V(ieta,l) == V(qprime,l)) + new_alpha(icluster,l) * theta_field(V(qprime,l)));
+            logprod += log((1 - alpha(icluster,l)) * (V(ieta,l) == V(qprime,l)) + alpha(icluster,l) * theta_field(V(qprime,l)));
           }
-          logprod += log((1 - new_alpha(icluster,l)) * theta_field(V(ieta,l)));
+          logprod += log(1 - alpha(icluster,l)) + logtheta_field(V(ieta,l));
           double max_logs = std::max(logprod, uponetajoining_loglikelihood(icluster, l));
           uponetajoining_loglikelihood(icluster, l) = max_logs + log(exp(logprod - max_logs) + exp(uponetajoining_loglikelihood(icluster, l) - max_logs));
         }
@@ -307,15 +272,13 @@ List update_eta_cpp(const IntegerVector eta_previous,
         logproba_eta[icluster] += 0.;
       }
     }
-    
     // sample from categorical/multinomial given logproba_eta
     double maxlogproba_eta = Rcpp::max(logproba_eta);
-    // Rcout << maxlogproba_eta << std::endl;
-    NumericVector weights = exp(logproba_eta - maxlogproba_eta);
+    logproba_eta = exp(logproba_eta - maxlogproba_eta);
     int draw = 0;
-    NumericVector cumsumw = cumsum(weights);
+    NumericVector cumsumw = cumsum(logproba_eta);
     GetRNGstate();
-    NumericVector uniform = runif(1);
+    uniform = runif(1);
     PutRNGstate();
     double u = uniform(0) * cumsumw(n-1);
     int running_index = 0;
@@ -338,20 +301,16 @@ List update_eta_cpp(const IntegerVector eta_previous,
     // change number of cluster if need be
     if (clsize[draw] == 0){ 
       ksize += 1;
-      // if new cluster, draw new alpha from prior 
-      // NumericVector zz = rnorm(p);
-      // zz = beta0 + s * zz;
-      // zz = exp(zz)/(1+exp(zz));
-      // new_alpha.row(draw) = zz;
     }
     // adds index in matrix storing members of each cluster
     clmembers(draw, clsize[draw]) = ieta;
     // increment cluster size
     clsize[draw] += 1;
   }
-  List clustering = List::create(Named("clsize") = clsize, Named("ksize") = ksize, Named("clmembers") = clmembers);  
+  clustering["clsize"] = clsize;
+  clustering["ksize"] = ksize;
+  clustering["clmembers"] = clmembers;
   return List::create(Named("eta") = eta, 
-                      Named("alpha") = new_alpha, 
                       Named("clusterloglikelihoods") = clusterloglikelihoods, 
                       Named("clustering") = clustering);
 }
