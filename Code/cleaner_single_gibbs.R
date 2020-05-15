@@ -41,7 +41,7 @@ fieldfrequencies <- fieldfrequencies[1:5]
 ## define dimensions of V
 n <- dim(V)[1]
 p <- dim(V)[2]
-# g <- 1.1
+g <- 1.1
 
 ## get some 'ground truth'
 # MATCH=outer(myRLDATA$id, myRLDATA$id, FUN="==")
@@ -70,7 +70,7 @@ expit <- function(x) exp(x)/(1+exp(x))
 
 ## hyper parameter specification
 ## prior parameter for N 
-g <- 1.1
+# g <- 1.02
 ## prior parameter for beta_0
 m0 <- logit(0.01)
 s0 <- sqrt(0.1)
@@ -85,7 +85,7 @@ lns_precomp <-  sapply(0:N_max, function(NN) log(NN))
 
 
 ## number of MCMC iterations
-nmcmc <- 5e2
+nmcmc <- 5e3
 ## there should be update frequencies ... 
 
 ## whether to print some things during the run, or not
@@ -138,14 +138,13 @@ s0_sq = s0^2
 s_sq = s^2
 proposal_sd = sqrt(0.5)
 
-
 ## next iterate updates in the Gibbs sampler
 for (imcmc in 1:nmcmc){
   if (verbose && (imcmc %% 1 == 0)) cat("iteration", imcmc, "/", nmcmc, 'ksize = ', partition$ksize, 'N = ', N,  "\n")
   ## update of eta
   # print(N)
   # print(length(unique(eta)))
-  update_eta_result <- update_eta_cpp(eta-1, partition, partition_ll, uponetajoining_loglikelihood, theta, logtheta, V-1, Mvec[1:p], alpha, N)
+  update_eta_result <- update_eta_cpp(eta-1, partition, partition_ll, uponetajoining_loglikelihood, theta, logtheta, V-1, alpha, N)
   eta <- update_eta_result$eta + 1
   partition_ll <- update_eta_result$clusterloglikelihoods
   partition <- update_eta_result$clustering
@@ -180,6 +179,16 @@ for (imcmc in 1:nmcmc){
     mu <- common_var*(m0/s0_sq + sum(beta_prime)/s_sq)
     beta_0[field] <- rnorm(1, mean = mu, sd = sqrt(common_var))
   }
+  # ## alternatively, partially collapsing by dropping the empty clusters
+  # common_var <- 1/(1/s0_sq + partition$ksize/s_sq)
+  # for (field in 1:p){
+  #   # calculating beta_prime as previous_beta_0 + new differences
+  #   beta_prime <- beta_0[field] + beta_diff[partition$clsize>0,field]
+  #   # posterior mean in the Normal-Normal model
+  #   mu <- common_var*(m0/s0_sq + sum(beta_prime)/s_sq)
+  #   beta_0[field] <- rnorm(1, mean = mu, sd = sqrt(common_var))
+  # }
+  beta_0_history[imcmc,] <- beta_0
   ## update of alpha/beta
   for (icluster in 1:n){
     ## for each cluster...
@@ -223,7 +232,6 @@ for (imcmc in 1:nmcmc){
       }
     }
   }
-  beta_0_history[imcmc,] <- beta_0
   ## update of theta
   ## note: prior on theta = uniform on simplex, equivalently Dirichlet(1,1,...,1)
   update_theta_result <- update_theta(theta, partition, partition_ll, alpha)
@@ -234,26 +242,22 @@ for (imcmc in 1:nmcmc){
   partition_ll <- update_theta_result$partition_ll
 }
 
-
 # cat(N_accept/nmcmc, "\n")
 # cat(theta_accept/nmcmc, "\n")
 
-# par(mfrow = c(2,))
-# nburn <- floor(nmcmc / 2)
+# par(mfrow = c(2,1))
+nburn <- floor(nmcmc / 2)
 ## reproduce top-left plot of figure 2
-# matplot(ksize_history[nburn : nmcmc], type = 'l')
-# points(ksize_history[nburn : nmcmc])
-# hist(ksize_history[nburn : nmcmc])
-## posterior of ksize
-# ksize_posterior = table(ksize_history[nburn : nmcmc]) / length(ksize_history[nburn : nmcmc])
-# ksize_posterior_names <- as.numeric(names(ksize_posterior))
-# plot(ksize_posterior_names,ksize_posterior,xlim=c(410,495),xlab="k",type="b",lwd=1,cex.lab=2,main="",ylab="")
+matplot(ksize_history[nburn : nmcmc], type = 'l')
+plot(N_history, type = "l")
 
-# plot(N_history, type = "l")
+matplot(beta_0_history, type = 'l')
 
-# matplot(beta_0_history, type = 'l')
-# 
 # matplot(theta1_history, type = 'l')
+
+hist(beta_0_history[5e2:nmcmc,1])
+# save(beta_0_history, file = "~/beta0noncollapsed.RData")
+# save(beta_0_history, file = "~/beta0partiallycollapsed.RData")
 
 # save(N_history, beta_0_history, theta1_history, ksize_history, nmcmc, file = "~/cleanergibbs_run1.RData")
 
