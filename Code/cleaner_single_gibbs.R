@@ -35,9 +35,9 @@ V=as.matrix(V)
 # Vector 'Mvec' has entries 'M_l' for l in 1:p
 
 ## let's subset the data 
-V <- V[1:250,8:10]
-Mvec <- Mvec[8:10]
-fieldfrequencies <- fieldfrequencies[8:10]
+V <- V[301:500,1:10]
+Mvec <- Mvec[1:10]
+fieldfrequencies <- fieldfrequencies[1:10]
 ## define dimensions of V
 n <- dim(V)[1]
 p <- dim(V)[2]
@@ -57,7 +57,7 @@ sourceCpp('compute_loglikelihood.cpp')
 #sourceCpp("compute_loglikelihood_all_clusters_one_field.cpp")
 #sourceCpp("compute_loglikelihood_one_cluster_one_field.cpp")
 ## to perform full sweep of eta updates 
-sourceCpp("update_eta.cpp")
+# sourceCpp("update_eta.cpp")
 ## to perform full sweep of theta updates
 source("update_theta.R")
 source('single_kernel_alpha.R')
@@ -70,13 +70,18 @@ expit <- function(x) exp(x)/(1+exp(x))
 ## hyper parameter specification
 ## prior parameter for N 
 g <- 1.02
-## prior parameter for beta0
+## prior parameter for beta_0
 m0 <- logit(0.01)
 s0 <- sqrt(0.1)
-## prior parameter for beta given beta0
+## prior parameter for beta given beta_0
 s  <- sqrt(0.5)
 ## truncation limit for N
 N_max <- 100000;
+## precompute terms so that we only have to look them up
+lfactorials_precomp <- sapply(0:N_max, function(NN) lfactorial(NN))
+lns_precomp <-  sapply(0:N_max, function(NN) log(NN))
+
+
 
 ## number of MCMC iterations
 nmcmc <- 1e2
@@ -88,7 +93,7 @@ verbose <- TRUE
 ## record history of certain components
 N_history <- rep(NA, nmcmc)
 theta1_history <- matrix(NA, nrow = nmcmc, ncol = Mvec[1])
-beta0_history <- matrix(NA, nrow = nmcmc, ncol = p)
+beta_0_history <- matrix(NA, nrow = nmcmc, ncol = p)
 ksize_history <- rep(NA, nmcmc)
 
 ## The state of the Markov chain  is (eta, N, b', b0, theta)
@@ -106,14 +111,14 @@ eta <- relabel_result$eta
 partition$clsize <- partition$clsize[relabel_result$old_to_new] 
 partition$clmembers <- partition$clmembers[relabel_result$old_to_new,]
 ## initial b0
-beta0 <- rnorm(p, m0, s0)
+beta_0 <- rnorm(p, m0, s0)
 ## initial beta
 beta_diff <- matrix(NA, nrow = n, ncol = p)
 for (field in 1:p) beta_diff[,field] <- rnorm(n, 0, s)
 # beta_diff[partition$clsize==0,] <- NA
 
 ##
-alpha <- beta_to_alpha(beta_diff, beta0)
+alpha <- beta_to_alpha(beta_diff, beta_0)
 ## initial frequencies of categories, initial values
 theta <- fieldfrequencies[1:p]
 ## sanity check
@@ -123,14 +128,21 @@ partition_ll <- compute_loglikelihood_all_clusters_all_fields_cpp(partition, the
 ## initialize quantities to monitor
 N_accept <- 0
 theta_accept <- rep(0, p)
+
+## precomputation
+s0_sq = s0^2
+s_sq = s^2
+proposal_sd = sqrt(0.5)
+
+
 ## next iterate updates in the Gibbs sampler
 for (imcmc in 1:nmcmc){
   if (verbose && (imcmc %% 1 == 0)) cat("iteration", imcmc, "/", nmcmc, 'ksize = ', partition$ksize, 'N = ', N,  "\n")
   ## update of eta
   # print(N)
   # print(length(unique(eta)))
-  update_eta_result <- update_eta_cpp(eta-1, partition, partition_ll, theta, V-1, Mvec[1:p], alpha, N, beta0, s)
-  eta <- update_eta_result$eta
+  update_eta_result <- update_eta_cpp(eta-1, partition, partition_ll, theta, V-1, Mvec[1:p], alpha, N, beta_0, s)
+  eta <- update_eta_result$eta + 1
   partition_ll <- update_eta_result$clusterloglikelihoods
   partition <- update_eta_result$clustering
   ksize_history[imcmc] <- partition$ksize
@@ -141,71 +153,75 @@ for (imcmc in 1:nmcmc){
   partition$clsize <- partition$clsize[relabel_result$old_to_new]
   partition$clmembers <- partition$clmembers[relabel_result$old_to_new,]
   partition_ll <- partition_ll[relabel_result$old_to_new,]
+  cl_size <- partition$clsize
   alpha <- alpha[relabel_result$old_to_new,]
   beta_diff <- beta_diff[relabel_result$old_to_new,] 
   ## update of N
-
-  # ## random walk proposal
-  # N_rw_stepsize <- 20
-  # # if (verbose) print("update N")
-  # Nproposal <- sample(x = (N-N_rw_stepsize):(N+N_rw_stepsize), size = 1)
-  # if (Nproposal >= partition$ksize){
-  #   target_proposal <- lfactorial(Nproposal) - lfactorial(Nproposal - partition$ksize) - (n+g) * log(Nproposal)
-  #   target_current <- lfactorial(N) - lfactorial(N - partition$ksize) - (n+g) * log(N)
-  #   logu <- log(runif(1))
-  #   if (logu < (target_proposal - target_current)){
-  #     N <- Nproposal
-  #     N_accept <- N_accept + 1
-  #   }
-  # }
-  # N_history[imcmc] <- N
-
   ## truncate N to N_max
-  # if (verbose) print("update N")
-  log_N_weights <- sapply(1 : N_max, function(NN) lfactorial(NN) - lfactorial(NN - partition$ksize) - (n+g) * log(NN) )
+  log_N_weights <- rep(-Inf, N_max)
+  log_N_weights[partition$ksize:N_max] <- lfactorials_precomp[(partition$ksize:N_max)+1] - 
+    lfactorials_precomp[(partition$ksize:N_max)+1-partition$ksize] - 
+    (n+g) * lns_precomp[(partition$ksize:N_max)+1]
   max_log_N_weights <- max(log_N_weights)
-  log_N_weights <- log_N_weights - max_log_N_weights
-  N_weights <- exp(log_N_weights) / sum(exp(log_N_weights))
+  N_weights <- exp(log_N_weights - max_log_N_weights)
   N <- sample.int(n = N_max, size = 1, prob = N_weights)
   N_history[imcmc] <- N
-  # if (verbose) print("update N done")
   
-  # update of alpha, beta diff and beta0
-  # we are storing both alpha and beta diff to avoid making unnecessary calculations
-  # alpha_beta_update <- single_full_alpha_update(beta_diff = beta_diff, 
-  #                                               alpha = alpha,
-  #                                               beta_0 = beta0, 
-  #                                               clustering = partition,
-  #                                               theta_list = theta, 
-  #                                               V = V,
-  #                                               partition_ll = partition_ll,
-  #                                               mu_0 = m0, 
-  #                                               s_0_sq = s0^2,
-  #                                               s_sq = s^2,
-  #                                               proposal_sd = 1.5,
-  #                                               p = p,
-  #                                               n = n)
-  
-  alpha_beta_update <- single_full_alpha_update_cl_size(beta_diff = beta_diff,
-                                                        alpha = alpha,
-                                                        beta_0 = beta0,
-                                                        clustering = partition,
-                                                        theta_list = theta,
-                                                        V = V,
-                                                        partition_ll = partition_ll,
-                                                        mu_0 = m0,
-                                                        s_0_sq = s0^2,
-                                                        s_sq = s^2,
-                                                        proposal_sd = sqrt(0.5),
-                                                        p = p,
-                                                        n = n,
-                                                        partition$clsize)
-  alpha <- alpha_beta_update$alpha
-  beta_diff <- alpha_beta_update$beta_diff
-  beta0 <- alpha_beta_update$beta0
-  beta0_history[imcmc,] <- beta0
-  print(mean(alpha_beta_update$acc_matrix, na.rm = TRUE))
-  
+  ## update of  beta_0 
+  ## using the formula for the conjugate posterior in the Normal-Normal model
+  common_var <- 1/(1/s0_sq + n/s_sq)
+  for (field in 1:p){
+    # calculating beta_prime as previous_beta_0 + new differences
+    beta_prime <- beta_0[field] + beta_diff[,field]
+    # posterior mean in the Normal-Normal model
+    mu <- common_var*(m0/s0_sq + sum(beta_prime)/s_sq)
+    beta_0[field] <- rnorm(1, mean = mu, sd = sqrt(common_var))
+  }
+  ## update of alpha/beta
+  for (icluster in 1:n){
+    ## for each cluster...
+    if (cl_size[icluster] <= 1){
+      ## this cluster is empty or contains only one element so likelihood 
+      ## does not depend on beta parameter; thus beta follows the prior
+      beta_diff_cl <- rnorm(p, mean = 0, sd = s)
+      exp_beta_ <- exp(beta_0+beta_diff_cl)
+      alpha_cl <- exp_beta_/(exp_beta_+1)
+      # result_list <- list(beta_diff_j_l = beta_diff_j_l, alpha_j_l = alpha_j_l, accept = NA)
+      beta_diff[icluster,] <- beta_diff_cl
+      alpha[icluster,] <- alpha_cl
+    } else {
+      ## cluster has at least 2 elements, we need the likelihood into account
+      # loop over fields 
+      for (l in 1:p){
+        ## current beta diff
+        current_beta_diff <- beta_diff[icluster, l]
+        ## we need to compute the cluster log-likelihood
+        proposed_beta_diff <- rnorm(1, current_beta_diff, sd = proposal_sd/max(1,cl_size[icluster]))
+        ## calculating the corresponding value of alpha
+        exp_beta <- exp(beta_0[l] + proposed_beta_diff)
+        proposed_alpha <- exp_beta/(exp_beta+1)
+        ## random number for acceptance/rejection
+        logu <- log(runif(1))
+        ## log likelihood taken from partition_ll + the prior
+        current_posterior <-  partition_ll[icluster, l] + dnorm(current_beta_diff, 0, s, log = TRUE)
+        ## we use beta_diff hence the mean is 0, not beta_0
+        proposed_logprior <- dnorm(proposed_beta_diff, 0, s, log = TRUE)
+        proposed_loglik <- compute_loglikelihood_one_cluster_one_field_cpp(l-1, icluster-1, partition,
+                                                                           theta[[l]], V-1, proposed_alpha)
+        accept <- (logu < (proposed_loglik + proposed_logprior - current_posterior))
+        if (accept){
+          ## update log-likelihood associated cluster
+          partition_ll[icluster,l] <- proposed_loglik
+          beta_diff[icluster,l] <- proposed_beta_diff
+          alpha[icluster,l] <- proposed_alpha
+        } else {
+          ## other wise do nothing
+        }
+      }
+    }
+  }
+  beta_0_history[imcmc,] <- beta_0
+  # print(mean(alpha_beta_update$acc_matrix, na.rm = TRUE))
   ## update of theta
   ## note: prior on theta = uniform on simplex, equivalently Dirichlet(1,1,...,1)
   update_theta_result <- update_theta(theta, partition, partition_ll, alpha)
@@ -214,80 +230,88 @@ for (imcmc in 1:nmcmc){
   theta1_history[imcmc, ] <- theta[[1]]
   partition_ll <- update_theta_result$partition_ll
 }
- 
-cat(N_accept/nmcmc, "\n")
-cat(theta_accept/nmcmc, "\n")
 
+# cat(N_accept/nmcmc, "\n")
+# cat(theta_accept/nmcmc, "\n")
+
+par(mfrow = c(1,3))
 nburn <- floor(nmcmc / 2)
 ## reproduce top-left plot of figure 2
 matplot(ksize_history[nburn : nmcmc], type = 'l')
-points(ksize_history[nburn : nmcmc])
-hist(ksize_history[nburn : nmcmc])
+# points(ksize_history[nburn : nmcmc])
+# hist(ksize_history[nburn : nmcmc])
 ## posterior of ksize
-ksize_posterior = table(ksize_history[nburn : nmcmc]) / length(ksize_history[nburn : nmcmc])
-ksize_posterior_names <- as.numeric(names(ksize_posterior))
-plot(ksize_posterior_names,ksize_posterior,xlim=c(410,495),xlab="k",type="b",lwd=1,cex.lab=2,main="",ylab="")
+# ksize_posterior = table(ksize_history[nburn : nmcmc]) / length(ksize_history[nburn : nmcmc])
+# ksize_posterior_names <- as.numeric(names(ksize_posterior))
+# plot(ksize_posterior_names,ksize_posterior,xlim=c(410,495),xlab="k",type="b",lwd=1,cex.lab=2,main="",ylab="")
+
+plot(N_history, type = "l")
+
+matplot(beta_0_history, type = 'l')
+
+# matplot(theta1_history, type = 'l')
+
 ## prior of ksize
-rzeta=function(a){
-  b=2^{a-1}
-  cond=TRUE
-  while(cond){
-    u=runif(1)
-    v=runif(1)
-    x=floor(u^(-1/(a-1)))
-    if (x==Inf) x=.Machine$double.xmax
-    t=(1+1/x)^(a-1)
-    cond=(v*x*(t-1)/(b-1)>t/b)
-  }
-  return(x)
-}
-NN2=c()
-for(i in 1:100000) NN2[i]=rzeta(1.02)
-k2=c()
-for(i in 1:100000) {
-  if (NN2[i]>.Machine$integer) k2[i]=length(unique(sample(.Machine$integer,size=500,rep=T)))
-  else k2[i]=length(unique(sample(NN2[i],size=500,rep=T)))
-}
-ksize_prior=table(k2)/length(k2)
-ksize_prior_names=as.numeric(names(ksize_prior))
-lines(ksize_prior_names,ksize_prior,col=2,lwd=2)
-
-## reproduce the top-right plot of figure 2
-matplot(N_history[nburn : nmcmc], type = 'l')
-points(N_history[nburn : nmcmc])
-hist(N_history[nburn : nmcmc])
-
-
-
-matplot(theta1_history[,1:2], type = 'l')
-abline(h = fieldfrequencies[[1]][1:2])
-
-# pairs(theta1_history[200:nmcmc,1:10])
+# rzeta=function(a){
+#   b=2^{a-1}
+#   cond=TRUE
+#   while(cond){
+#     u=runif(1)
+#     v=runif(1)
+#     x=floor(u^(-1/(a-1)))
+#     if (x==Inf) x=.Machine$double.xmax
+#     t=(1+1/x)^(a-1)
+#     cond=(v*x*(t-1)/(b-1)>t/b)
+#   }
+#   return(x)
+# }
+# NN2=c()
+# for(i in 1:100000) NN2[i]=rzeta(1.02)
+# k2=c()
+# for(i in 1:100000) {
+#   if (NN2[i]>.Machine$integer) k2[i]=length(unique(sample(.Machine$integer,size=500,rep=T)))
+#   else k2[i]=length(unique(sample(NN2[i],size=500,rep=T)))
+# }
+# ksize_prior=table(k2)/length(k2)
+# ksize_prior_names=as.numeric(names(ksize_prior))
+# lines(ksize_prior_names,ksize_prior,col=2,lwd=2)
+# 
+# ## reproduce the top-right plot of figure 2
+# matplot(N_history[nburn : nmcmc], type = 'l')
+# points(N_history[nburn : nmcmc])
+# hist(N_history[nburn : nmcmc])
+# 
+# 
+# 
+# matplot(theta1_history[,1:2], type = 'l')
+# abline(h = fieldfrequencies[[1]][1:2])
+# 
+# # pairs(theta1_history[200:nmcmc,1:10])
+# # hist(N_history[(nmcmc/10):nmcmc])
+# 
 # hist(N_history[(nmcmc/10):nmcmc])
-
-hist(N_history[(nmcmc/10):nmcmc])
-hist(theta1_history[(nmcmc/10):nmcmc,1])
-abline(v = fieldfrequencies[[1]][1])
-
-hist(theta1_history[(nmcmc/10):nmcmc,2])
-abline(v = fieldfrequencies[[1]][2])
-
-hist(theta1_history[(nmcmc/10):nmcmc,3])
-abline(v = fieldfrequencies[[1]][3])
-
-# density plots for beta0
-ggplot(as.data.frame(beta0_history), aes(V1)) + geom_density()
-ggplot(as.data.frame(beta0_history), aes(V2)) + geom_density()
-ggplot(as.data.frame(beta0_history), aes(V14)) + geom_density()
-
-# traceplots for beta0
-matplot(beta0_history[seq(from = 1, by = 1, to = 1e4),14], type = 'l')
-
-p1 <- ggplot(data.frame(V1= N_history[2001:nmcmc]), aes(V1)) + geom_histogram(bins=20, col = 'black', fill = 'gray70') + xlab('N')
-p2 <- ggplot(data.frame(V1= N_history[1:nmcmc], V2 = 1:nmcmc), aes(x=V2,y =V1)) + geom_line(col = 'black')+ ylab('N') + xlab('iteration')
-p1
-p2
-library(gridExtra)
-grid.arrange(p1, p2, ncol =2)
-#ggsave('single_chain_N_hist_traceplot.png', grid.arrange(p1, p2, ncol =2), height = 6, width =10)
+# hist(theta1_history[(nmcmc/10):nmcmc,1])
+# abline(v = fieldfrequencies[[1]][1])
+# 
+# hist(theta1_history[(nmcmc/10):nmcmc,2])
+# abline(v = fieldfrequencies[[1]][2])
+# 
+# hist(theta1_history[(nmcmc/10):nmcmc,3])
+# abline(v = fieldfrequencies[[1]][3])
+# 
+# # density plots for beta_0
+# ggplot(as.data.frame(beta_0_history), aes(V1)) + geom_density()
+# ggplot(as.data.frame(beta_0_history), aes(V2)) + geom_density()
+# ggplot(as.data.frame(beta_0_history), aes(V14)) + geom_density()
+# 
+# # traceplots for beta_0
+# matplot(beta_0_history[seq(from = 1, by = 1, to = 1e4),14], type = 'l')
+# 
+# p1 <- ggplot(data.frame(V1= N_history[2001:nmcmc]), aes(V1)) + geom_histogram(bins=20, col = 'black', fill = 'gray70') + xlab('N')
+# p2 <- ggplot(data.frame(V1= N_history[1:nmcmc], V2 = 1:nmcmc), aes(x=V2,y =V1)) + geom_line(col = 'black')+ ylab('N') + xlab('iteration')
+# p1
+# p2
+# library(gridExtra)
+# grid.arrange(p1, p2, ncol =2)
+# #ggsave('single_chain_N_hist_traceplot.png', grid.arrange(p1, p2, ncol =2), height = 6, width =10)
 
