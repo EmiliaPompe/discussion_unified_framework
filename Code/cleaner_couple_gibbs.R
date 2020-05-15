@@ -108,6 +108,7 @@ ksize_history1 <- ksize_history2 <- rep(NA, nmcmc) ## number of clusters
 ## initialize two chains from different points
 ## initial etas
 eta1 <- sample(n, size = n, replace = T)
+# eta2 <- eta1
 eta2 <- sample(n, size = n, replace = T)
 partition1 <- init_clustering_cpp(eta1 - 1)
 partition2 <- init_clustering_cpp(eta2 - 1)
@@ -121,8 +122,8 @@ partition2$clsize <- partition2$clsize[relabel_result2$old_to_new]
 partition2$clmembers <- partition2$clmembers[relabel_result2$old_to_new,]
 ## initial N
 N1 <- max(n, 2 * length(unique(eta1)))
-# N2 <- N1
-N2 <- max(n, 2 * length(unique(eta2)))
+N2 <- N1
+# N2 <- max(n, 2 * length(unique(eta2)))
 # if (N1 == N2) N2 <- N1 + 10
 
 ## initial b0
