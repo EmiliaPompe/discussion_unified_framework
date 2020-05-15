@@ -1,4 +1,4 @@
-## This script aims at simply running the Gibbs sampler on a small data set
+## This script aims at coupling the Gibbs sampler on the synthetic data set
 ## this is work in progress
 rm(list = ls())
 set.seed(1)
@@ -36,7 +36,9 @@ V=as.matrix(V)
 # Vector 'Mvec' has entries 'M_l' for l in 1:p
 
 ## let's subset the data 
-# V <- V[1:50,1:2]
+V <- V[,8:10]
+Mvec <- Mvec[8:10]
+fieldfrequencies <- fieldfrequencies[8:10]
 ## define dimensions of V
 n <- dim(V)[1]
 p <- dim(V)[2]
@@ -85,8 +87,8 @@ s  <- sqrt(0.5)
 ## truncation limit for N
 N_max <- 100000;
 
-## number of MCMC imcmcations
-nmcmc <- 1e2
+## number of MCMC iterations
+nmcmc <- 1e1
 ## there should be update frequencies ... 
 
 ## whether to print some things during the run, or not
@@ -132,17 +134,18 @@ alpha2 <- beta_to_alpha(beta_diff2, beta0_chain2)
 ## initial frequencies of categories, initial values
 theta1 <- fieldfrequencies[1:p]
 ## initialize theta2 with a dirichlet move from theta1
-theta2 <- list()
-for (field in 1:p){
-	theta2[[field]] <- gtools::rdirichlet(1, alpha = (1 + concentration * theta1[[field]]))[1,]
-}
+theta2 <- fieldfrequencies[1:p]
+# theta2 <- list()
+# for (field in 1:p){
+# 	theta2[[field]] <- gtools::rdirichlet(1, alpha = (1 + concentration * theta1[[field]]))[1,]
+# }
 ## sanity check
 all(Mvec[1:p] == sapply(theta1, length))
 all(Mvec[1:p] == sapply(theta2, length))
 
 ## compute log-likelihood associated with each cluster for both chains
 partition_ll1 <- compute_loglikelihood_all_clusters_all_fields_cpp(partition1, theta1, V-1, alpha1)
-partition_ll2 <- compute_loglikelihood_all_clusters_all_fields_cpp(partition2, theta1, V-1, alpha2)
+partition_ll2 <- compute_loglikelihood_all_clusters_all_fields_cpp(partition2, theta2, V-1, alpha2)
 
 ## intailize quantities to monitor 
 cluster_distance_history <- rep(NA, nmcmc)
@@ -178,7 +181,7 @@ for (imcmc in 1 : nmcmc){
 	ksize1_history[imcmc] <- partition1$ksize 
 	ksize2_history[imcmc] <- partition2$ksize 
 	cluster_distance_history[imcmc] <- clusteval::cluster_similarity(eta1,eta2)
-	if (verbose && (imcmc %% 1 == 0)) cat("iteration", imcmc, "/", nmcmc, 'cluster distance = ', clusteval::cluster_similarity(eta1,eta2), "\n")
+	if (verbose && (imcmc %% 1 == 0)) cat("iteration", imcmc, "/", nmcmc, 'cluster similarity = ', clusteval::cluster_similarity(eta1,eta2), "\n")
 	## update alpha 
 	couple_alpha_result <- coupled_full_alpha_update(beta_diff_1 = beta_diff1,
 	                                                 beta_diff_2 = beta_diff2,
@@ -212,11 +215,11 @@ for (imcmc in 1 : nmcmc){
 	alpha2 <- couple_alpha_result$alpha_2
 	
 	## update theta
-	couple_theta_result <- couple_theta(theta1, theta2, partition1, partition2, partition_ll1, partition_ll2, alpha1, alpha2)
-	theta1 <- couple_theta_result$theta1
-	theta2 <- couple_theta_result$theta2
-	theta1_field1_history[imcmc,] <- theta1[[1]]
-	theta2_field1_history[imcmc,] <- theta2[[1]]
+	# couple_theta_result <- couple_theta(theta1, theta2, partition1, partition2, partition_ll1, partition_ll2, alpha1, alpha2)
+	# theta1 <- couple_theta_result$theta1
+	# theta2 <- couple_theta_result$theta2
+	# theta1_field1_history[imcmc,] <- theta1[[1]]
+	# theta2_field1_history[imcmc,] <- theta2[[1]]
 	## update of N 
 	Ns <- couple_N(N1 = N1, N2 = N2, k1 = partition1$ksize, k2 = partition2$ksize, g, n)
 	N1 <- Ns[1]
@@ -231,16 +234,17 @@ par(mfrow = c(1,2))
 tail_length = 50
 ## note: xlim and ylim here works for the full dataset
 plot(tail(ksize1_history, tail_length), type = 'l', ylim = c(400,500))
-lines(tail(ksize1_history, tail_length), type = 'l', col = 'red') 
-ksize1_post <- table(tail(ksize1_history, tail_length)) / tail_length
-ksize2_post <- table(tail(ksize2_history, tail_length)) / tail_length
-plot(as.numeric(names(ksize1_post)),ksize1_post,xlim=c(400,500),xlab="k",type="b",lwd=1,cex.lab=2,
-     main="ksize",ylab="", col = 'red')
-points(as.numeric(names(ksize2_post)),ksize2_post,xlim=c(410,495),xlab="k",type="b",lwd=1,cex.lab=2)
+lines(tail(ksize2_history, tail_length), type = 'l', col = 'red') 
 
-## look at trace and histogram of population size
-plot(tail(N1_history, tail_length), type = 'l', ylim = c(500,4500))
-lines(tail(N2_history, tail_length), type = 'l', col = 'red')
-
-hist(tail(N1_history, tail_length), xlim = c(500,4500), col=rgb(1,0,0,0.5))
-hist(tail(N2_history, tail_length), col=rgb(0,0,1,0.5), add=T)
+# ksize1_post <- table(tail(ksize1_history, tail_length)) / tail_length
+# ksize2_post <- table(tail(ksize2_history, tail_length)) / tail_length
+# plot(as.numeric(names(ksize1_post)),ksize1_post,xlim=c(400,500),xlab="k",type="b",lwd=1,cex.lab=2,
+#      main="ksize",ylab="", col = 'red')
+# points(as.numeric(names(ksize2_post)),ksize2_post,xlim=c(410,495),xlab="k",type="b",lwd=1,cex.lab=2)
+# 
+# ## look at trace and histogram of population size
+# plot(tail(N1_history, tail_length), type = 'l', ylim = c(500,4500))
+# lines(tail(N2_history, tail_length), type = 'l', col = 'red')
+# 
+# hist(tail(N1_history, tail_length), xlim = c(500,4500), col=rgb(1,0,0,0.5))
+# hist(tail(N2_history, tail_length), col=rgb(0,0,1,0.5), add=T)

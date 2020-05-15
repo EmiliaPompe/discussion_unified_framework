@@ -35,7 +35,9 @@ V=as.matrix(V)
 # Vector 'Mvec' has entries 'M_l' for l in 1:p
 
 ## let's subset the data 
-#V <- V[1:50,1:2]
+V <- V[1:250,8:10]
+Mvec <- Mvec[8:10]
+fieldfrequencies <- fieldfrequencies[8:10]
 ## define dimensions of V
 n <- dim(V)[1]
 p <- dim(V)[2]
@@ -77,7 +79,7 @@ s  <- sqrt(0.5)
 N_max <- 100000;
 
 ## number of MCMC iterations
-nmcmc <- 1e4
+nmcmc <- 1e2
 ## there should be update frequencies ... 
 
 ## whether to print some things during the run, or not
