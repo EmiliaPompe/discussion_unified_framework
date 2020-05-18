@@ -3,3 +3,7 @@
 Code/*.pdf
 **/*.Rhistory
 ../.Rhistory
+*.o
+*.so
+
+.Rproj.user

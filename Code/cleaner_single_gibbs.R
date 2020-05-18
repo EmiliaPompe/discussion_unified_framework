@@ -138,6 +138,15 @@ s0_sq = s0^2
 s_sq = s^2
 proposal_sd = sqrt(0.5)
 
+
+# update_eta_result <- update_eta_cpp(eta-1, partition, partition_ll, uponetajoining_loglikelihood, theta, logtheta, V-1, alpha, N)
+# eta <- update_eta_result$eta + 1
+# partition_ll <- update_eta_result$clusterloglikelihoods
+# partition <- update_eta_result$clustering
+# partition$clsize
+# partition_ll
+# any(is.na(partition_ll))
+
 ## next iterate updates in the Gibbs sampler
 for (imcmc in 1:nmcmc){
   if (verbose && (imcmc %% 1 == 0)) cat("iteration", imcmc, "/", nmcmc, 'ksize = ', partition$ksize, 'N = ', N,  "\n")

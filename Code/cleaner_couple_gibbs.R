@@ -36,9 +36,9 @@ V=as.matrix(V)
 # Vector 'Mvec' has entries 'M_l' for l in 1:p
 
 ## let's subset the data 
-V <- V[301:500,1:5]
-Mvec <- Mvec[1:5]
-fieldfrequencies <- fieldfrequencies[1:5]
+V <- V[301:500,1:3]
+Mvec <- Mvec[1:3]
+fieldfrequencies <- fieldfrequencies[1:3]
 ## define dimensions of V
 n <- dim(V)[1]
 p <- dim(V)[2]
@@ -93,7 +93,7 @@ lfactorials_precomp <- sapply(0:N_max, function(NN) lfactorial(NN))
 lns_precomp <-  sapply(0:N_max, function(NN) log(NN))
 
 ## number of MCMC iterations
-nmcmc <- 2e2
+nmcmc <- 100
 ## there should be update frequencies ... 
 
 ## whether to print some things during the run, or not
@@ -120,6 +120,10 @@ partition1$clmembers <- partition1$clmembers[relabel_result1$old_to_new,]
 eta2 <- relabel_result2$eta
 partition2$clsize <- partition2$clsize[relabel_result2$old_to_new] 
 partition2$clmembers <- partition2$clmembers[relabel_result2$old_to_new,]
+
+eta_history1 <- matrix(NA, nrow = nmcmc, ncol = n)
+eta_history2 <- matrix(NA, nrow = nmcmc, ncol = n)
+
 ## initial N
 N1 <- max(n, 2 * length(unique(eta1)))
 N2 <- N1
@@ -127,8 +131,8 @@ N2 <- N1
 # if (N1 == N2) N2 <- N1 + 10
 
 ## initial b0
-beta0_chain1 <- rnorm(p, m0, s0)
-beta0_chain2 <- beta0_chain1
+beta01 <- rnorm(p, m0, s0)
+beta02 <- beta01
 # beta0_chain2 <- rnorm(p, m0, s0)
 ## initial beta
 beta_diff1 <- beta_diff2 <- matrix(NA, nrow = n, ncol = p)
@@ -139,8 +143,8 @@ for (field in 1:p){
 }
 beta_diff_identical <- matrix(FALSE, nrow = n, ncol = p)
 ## compute alphas
-alpha1 <- beta_to_alpha(beta_diff1, beta0_chain1)
-alpha2 <- beta_to_alpha(beta_diff2, beta0_chain2)
+alpha1 <- beta_to_alpha(beta_diff1, beta01)
+alpha2 <- beta_to_alpha(beta_diff2, beta02)
 ## initial frequencies of categories, initial values
 theta1 <- fieldfrequencies[1:p]
 ## initialize theta2 with a dirichlet move from theta1
@@ -163,6 +167,7 @@ partition_ll2 <- compute_loglikelihood_all_clusters_all_fields_cpp(partition2, t
 uponetajoining_loglikelihood1 <- partition_ll1
 uponetajoining_loglikelihood2 <- partition_ll2
 
+diffmatrix <- function(m1, m2) print(summary(as.numeric(abs(m1 - m2))))
 
 ## initialize quantities to monitor 
 cluster_similarity_history <- rep(NA, nmcmc)
@@ -177,26 +182,49 @@ proposal_sd = sqrt(0.5)
 ## updates on chain1
 for (imcmc in 1:nmcmc){
 	## update of eta 
-  # init_clustering_cpp(eta1-1)$clsize
-  # print(partition1$clsize)  
-  coupled_update_eta_result <- coupled_update_eta_cpp(eta1-1, eta2-1, partition1, partition2, 
-                                                      partition_ll1, partition_ll2, 
-                                                      uponetajoining_loglikelihood1, 
-                                                      uponetajoining_loglikelihood2, 
-                                                      theta1, theta2, logtheta1, logtheta2, 
+  # imcmc = 1
+  cat("start iteration", imcmc, "\n")
+  cat("eta equal", all(eta1 == eta2), "\n")
+  cat("N equal", N1 == N2, "\n")
+  # identical(partition1, partition2)
+  # diffmatrix(partition_ll1, partition_ll2)
+  # diffmatrix(partition_ll1, partition_ll2)
+  coupled_update_eta_result <- coupled_update_eta_cpp(eta1-1, eta2-1, partition1, partition2,
+                                                      partition_ll1, partition_ll2,
+                                                      uponetajoining_loglikelihood1,
+                                                      uponetajoining_loglikelihood2,
+                                                      theta1, theta2, logtheta1, logtheta2,
                                                       V-1, alpha1, alpha2, N1, N2)
-  # update_eta_result <- update_eta_cpp(eta1-1, partition1, partition_ll1, uponetajoining_loglikelihood1, theta1, logtheta1, V-1, alpha1, 100000)
-  # update_eta_result <- update_eta_cpp(eta2-1, partition2, partition_ll2, uponetajoining_loglikelihood2, theta2, logtheta2, V-1, alpha2, N2)
   
   eta1 <- coupled_update_eta_result$eta1 + 1
   eta2 <- coupled_update_eta_result$eta2 + 1
-  partition_ll1 <- coupled_update_eta_result$clusterloglikelihoods1
-  partition_ll2 <- coupled_update_eta_result$clusterloglikelihoods2
   partition1 <- coupled_update_eta_result$clustering1
   partition2 <- coupled_update_eta_result$clustering2
+  partition_ll1 <- coupled_update_eta_result$clusterloglikelihoods1
+  partition_ll2 <- coupled_update_eta_result$clusterloglikelihoods2
+  clusterloglikelihoods1 <- coupled_update_eta_result$clusterloglikelihoods1
+  clusterloglikelihoods2 <- coupled_update_eta_result$clusterloglikelihoods2
+  # update_eta_result1 <- update_eta_cpp(eta1-1, partition1, partition_ll1, uponetajoining_loglikelihood1, theta1, logtheta1, V-1, alpha1, N1)
+  # update_eta_result2 <- update_eta_cpp(eta2-1, partition2, partition_ll2, uponetajoining_loglikelihood2, theta2, logtheta2, V-1, alpha2, N2)
+  # eta1 <- update_eta_result1$eta
+  # eta2 <- update_eta_result2$eta
+  # partition_ll1 <- update_eta_result1$clusterloglikelihoods
+  # partition_ll2 <- update_eta_result2$clusterloglikelihoods
+  # partition1 <- update_eta_result1$clustering
+  # partition2 <- update_eta_result2$clustering
+  # print(partition1$clsize)  
+  # diffmatrix(coupled_update_eta_result$clustering1$clmembers, coupled_update_eta_result$clustering2$clmembers)
+  # diffmatrix(partition_ll1, partition_ll2)
+  # diffmatrix(coupled_update_eta_result$clusterloglikelihoods1, coupled_update_eta_result$clusterloglikelihoods2)
+  # cluster_similarity(coupled_update_eta_result$eta1, coupled_update_eta_result$eta2)
+  # all(coupled_update_eta_result$eta1 == coupled_update_eta_result$eta2)
+  # identical(partition1, partition2)
+  cat("after eta update...\n")
+  print(identical(partition1, partition2))
+  print(diffmatrix(partition_ll1, partition_ll2))
+  print(cluster_similarity(eta1, eta2))
   ksize_history1[imcmc] <- partition1$ksize
   ksize_history2[imcmc] <- partition2$ksize
-  # print(partition1$clsize)  
   
 	## relabel lambd1 and lambda2 and change a1, a2, partiton_ll1, partition_ll2 accordingly
 	relabel_result1 <- relabel2(eta1, partition1)
@@ -207,7 +235,6 @@ for (imcmc in 1:nmcmc){
 	cl_size1 <- partition1$clsize
 	alpha1 <- alpha1[relabel_result1$old_to_new,]
 	beta_diff1 <- beta_diff1[relabel_result1$old_to_new,]
-	# print(partition1$clsize)  
 	#
 	relabel_result2 <- relabel2(eta2, partition2)
 	eta2 <- relabel_result2$eta 
@@ -218,11 +245,20 @@ for (imcmc in 1:nmcmc){
 	alpha2 <- alpha2[relabel_result2$old_to_new,]
 	beta_diff2 <- beta_diff2[relabel_result2$old_to_new,]
 	#
+	cat("after relabeling...\n")
+	print(identical(partition1, partition2))
+	print(diffmatrix(partition_ll1, partition_ll2))
+	print(cluster_similarity(eta1, eta2))
+	
+	eta_history1[imcmc,] <- eta1 
+	eta_history2[imcmc,] <- eta2 
 	ksize_history1[imcmc] <- partition1$ksize 
 	ksize_history2[imcmc] <- partition2$ksize 
 	cluster_similarity_history[imcmc] <- clusteval::cluster_similarity(eta1, eta2)
 	if (verbose && (imcmc %% 1 == 0)) cat("iteration", imcmc, "/", nmcmc, 'cluster similarity = ', clusteval::cluster_similarity(eta1,eta2), "\n")
-	
+	# if (clusteval::cluster_similarity(eta1,eta2)==1){
+	#   break
+	# }
 	### update of N1 and N2
 	## using maximal coupling
 	log_N_weights1 <- rep(-Inf, N_max)
@@ -285,23 +321,41 @@ for (imcmc in 1:nmcmc){
 	# theta2_field1_history[imcmc,] <- theta2[[1]]
 	if (verbose && (imcmc %% 1 == 0)) cat("iteration", imcmc, "/", nmcmc, 'ksize =', partition1$ksize, '/', partition2$ksize, 'N = ', N1, '/',N2,  "\n")
 }
-
-# par(mfrow = c(1,2))
-## look at trace and histogram of number of clusters
-tail_length = 50
-## note: xlim and ylim here works for the full dataset
-plot(tail(ksize_history1, tail_length), type = 'l')
-lines(tail(ksize_history2, tail_length), type = 'l', col = 'red')
-
-# ksize1_post <- table(tail(ksize1_history, tail_length)) / tail_length
-# ksize2_post <- table(tail(ksize2_history, tail_length)) / tail_length
-# plot(as.numeric(names(ksize1_post)),ksize1_post,xlim=c(400,500),xlab="k",type="b",lwd=1,cex.lab=2,
-#      main="ksize",ylab="", col = 'red')
-# points(as.numeric(names(ksize2_post)),ksize2_post,xlim=c(410,495),xlab="k",type="b",lwd=1,cex.lab=2)
 # 
-# ## look at trace and histogram of population size
-plot(tail(N_history1, tail_length), type = 'l')
-lines(tail(N_history2, tail_length), type = 'l', col = 'red')
+identical(eta1, eta2)
+identical(N1, N2)
+diffmatrix(partition_ll1, partition_ll2)
 # 
-# hist(tail(N1_history, tail_length), xlim = c(500,4500), col=rgb(1,0,0,0.5))
-# hist(tail(N2_history, tail_length), col=rgb(0,0,1,0.5), add=T)
+# 
+plot(cluster_similarity_history)
+# i_ <- which(sapply(1:(nmcmc-1), function(index) (cluster_similarity_history[index]==1 && cluster_similarity_history[index+1]< 1)))[1]
+# i_
+# identical(eta_history1[i_,], eta_history2[i_,])
+# identical(N_history1[i_], N_history2[i_])
+# 
+# 
+# 
+# # index_samecluster <- which(cluster_similarity_history==1)
+# # all(eta_history1[index_samecluster[1],] == eta_history2[index_samecluster[1],])
+# # eta_history1[index_samecluster[1]+1,] - eta_history2[index_samecluster[1]+1,]
+# 
+# N_history1[index_samecluster[1]]== N_history2[index_samecluster[1]]
+# # par(mfrow = c(1,2))
+# ## look at trace and histogram of number of clusters
+# tail_length = 50
+# ## note: xlim and ylim here works for the full dataset
+# plot(tail(ksize_history1, tail_length), type = 'l')
+# lines(tail(ksize_history2, tail_length), type = 'l', col = 'red')
+# 
+# # ksize1_post <- table(tail(ksize1_history, tail_length)) / tail_length
+# # ksize2_post <- table(tail(ksize2_history, tail_length)) / tail_length
+# # plot(as.numeric(names(ksize1_post)),ksize1_post,xlim=c(400,500),xlab="k",type="b",lwd=1,cex.lab=2,
+# #      main="ksize",ylab="", col = 'red')
+# # points(as.numeric(names(ksize2_post)),ksize2_post,xlim=c(410,495),xlab="k",type="b",lwd=1,cex.lab=2)
+# # 
+# # ## look at trace and histogram of population size
+# plot(tail(N_history1, tail_length), type = 'l')
+# lines(tail(N_history2, tail_length), type = 'l', col = 'red')
+# # 
+# # hist(tail(N1_history, tail_length), xlim = c(500,4500), col=rgb(1,0,0,0.5))
+# # hist(tail(N2_history, tail_length), col=rgb(0,0,1,0.5), add=T)

@@ -168,7 +168,7 @@ NumericVector compute_loglikelihood_all_clusters_one_field_cpp(int l ,
 // [[Rcpp::export]]
 List update_eta_cpp(IntegerVector & eta,
                     List & clustering,
-                    NumericMatrix & clusterloglikelihoods,
+                    const NumericMatrix & previous_clusterloglikelihoods,
                     NumericMatrix & uponetajoining_loglikelihood,
                     const List & theta,
                     const List & logtheta,
@@ -182,7 +182,7 @@ List update_eta_cpp(IntegerVector & eta,
   //
   int n = V.nrow();
   int p = V.ncol();
-  // NumericMatrix clusterloglikelihoods = clone(wrap(ll));
+  NumericMatrix clusterloglikelihoods = clone(wrap(previous_clusterloglikelihoods));
   // 
   NumericVector newblock_loglikelihood = no_init(p);
   NumericVector theta_field;
@@ -213,12 +213,16 @@ List update_eta_cpp(IntegerVector & eta,
     clsize[label] --;
     // if cluster is now empty
     if (clsize[label] == 0){
+      // Rcout << "putting NA in row" << label << std::endl;
       // decrement cluster counter
       ksize --;
       // remove log-likelihoods associated with that cluster
       std::fill(clusterloglikelihoods.row(label).begin(), clusterloglikelihoods.row(label).end(), NA_REAL);
-      // remove corresponding alpha
+      // for (int field = 0; field < p; field ++){
+      //   clusterloglikelihoods(label,field) = NA_REAL;
+      // }
     } else {
+      // Rcout << "recomputing row " << label << std::endl;
       // recompute likelihood of cluster from scratch
       for (int field = 0; field < p; field ++){
         clusterloglikelihoods(label,field) = compute_loglikelihood_one_cluster_one_field_cpp(field,
@@ -293,6 +297,7 @@ List update_eta_cpp(IntegerVector & eta,
     // thus we update eta, and the clustering, and associated loglikelihoods appropriately
     eta[ieta] = draw;
     // update cluster log likelihoods
+    // Rcout << "filling row " << draw << std::endl;
     clusterloglikelihoods.row(draw) = uponetajoining_loglikelihood.row(draw);
     // if cluster is new, we need to draw a vector alpha 
     // and we need to update the partition
@@ -321,8 +326,8 @@ List coupled_update_eta_cpp(
     IntegerVector & eta2,
     List & clustering1,
     List & clustering2,
-    NumericMatrix & clusterloglikelihoods1,
-    NumericMatrix & clusterloglikelihoods2,
+    const NumericMatrix & previous_clusterloglikelihoods1,
+    const NumericMatrix & previous_clusterloglikelihoods2,
     NumericMatrix & uponetajoining_loglikelihood1,
     NumericMatrix & uponetajoining_loglikelihood2,
     const List & theta1,
@@ -344,6 +349,8 @@ List coupled_update_eta_cpp(
   int n = V.nrow();
   int p = V.ncol();
   //
+  NumericMatrix clusterloglikelihoods1 = clone(wrap(previous_clusterloglikelihoods1));
+  NumericMatrix clusterloglikelihoods2 = clone(wrap(previous_clusterloglikelihoods2));
   NumericVector newblock_loglikelihood1 = no_init(p);
   NumericVector newblock_loglikelihood2 = no_init(p);
   NumericVector theta_field1, theta_field2;
@@ -351,7 +358,7 @@ List coupled_update_eta_cpp(
   // NumericMatrix uponetajoining_loglikelihood = no_init(n,p);
   NumericVector logproba_eta1 = no_init(n);
   NumericVector logproba_eta2 = no_init(n);
-  NumericVector uniform1, uniform2;
+  NumericVector firstuniform, seconduniform;
 
   // loop over components of eta
   for (int ieta = 0; ieta < n; ieta++){
@@ -509,15 +516,15 @@ List coupled_update_eta_cpp(
     NumericVector commonpart = Rcpp::pmin(logproba_eta1, logproba_eta2);
     double sumcommonpart = sum(commonpart);
     GetRNGstate();
-    uniform1 = runif(1);
-    uniform2 = runif(1);
+    firstuniform = runif(1);
+    seconduniform = runif(1);
     PutRNGstate();
     int draw1 = 0;
     int draw2 = 0;
-    if (uniform1(0) < sumcommonpart){
+    if (firstuniform(0) < sumcommonpart){
       // draw from common part
       NumericVector cumsumw = cumsum(commonpart);
-      double u = uniform2(0) * cumsumw(n-1);
+      double u = seconduniform(0) * cumsumw(n-1);
       int running_index = 0;
       double sumw = cumsumw(running_index);
       if (u <= sumw){
@@ -533,8 +540,7 @@ List coupled_update_eta_cpp(
     } else {
       // draw from residuals
       NumericVector cumsumw1 = cumsum(logproba_eta1 - commonpart);
-      NumericVector cumsumw2 = cumsum(logproba_eta2 - commonpart);
-      double u = uniform2(0) * cumsumw1(n-1);
+      double u = seconduniform(0) * cumsumw1(n-1);
       int running_index = 0;
       double sumw = cumsumw1(running_index);
       if (u <= sumw){
@@ -546,7 +552,8 @@ List coupled_update_eta_cpp(
         }
         draw1 = running_index-1;
       }
-      u = uniform2(0) * cumsumw2(n-1);
+      NumericVector cumsumw2 = cumsum(logproba_eta2 - commonpart);
+      u = seconduniform(0) * cumsumw2(n-1);
       running_index = 0;
       sumw = cumsumw2(running_index);
       if (u <= sumw){
@@ -569,10 +576,10 @@ List coupled_update_eta_cpp(
     // and we need to update the partition
     // change number of cluster if need be
     if (clsize1[draw1] == 0){
-      ksize1 += 1;
+      ksize1 ++;
     }
     if (clsize2[draw2] == 0){
-      ksize2 += 1;
+      ksize2 ++;
     }
     // adds index in matrix storing members of each cluster
     clmembers1(draw1, clsize1[draw1]) = ieta;
@@ -581,13 +588,14 @@ List coupled_update_eta_cpp(
     clsize1[draw1] += 1;
     clsize2[draw2] += 1;
   }
-  clustering1["clsize"] = clsize1;
-  clustering1["ksize"] = ksize1;
+  clustering1["clsize"]    = clsize1;
+  clustering1["ksize"]     = ksize1;
   clustering1["clmembers"] = clmembers1;
-  clustering2["clsize"] = clsize2;
-  clustering2["ksize"] = ksize2;
+  clustering2["clsize"]    = clsize2;
+  clustering2["ksize"]     = ksize2;
   clustering2["clmembers"] = clmembers2;
-  return List::create(Named("eta1") = eta1, Named("eta2") = eta2,
+  return List::create(Named("eta1") = eta1, 
+                      Named("eta2") = eta2,
                       Named("clusterloglikelihoods1") = clusterloglikelihoods1,
                       Named("clusterloglikelihoods2") = clusterloglikelihoods2,
                       Named("clustering1") = clustering1,
