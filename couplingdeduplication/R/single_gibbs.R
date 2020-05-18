@@ -109,7 +109,7 @@ single_gibbs <- function(nmcmc, V, fieldfrequencies, hyper, precomp, verbose = T
     }
     ## update of theta
     ## note: prior on theta = uniform on simplex, equivalently Dirichlet(1,1,...,1)
-    update_theta_result <- update_theta(state$theta, state$partition, partition_ll, state$alpha, concentration)
+    update_theta_result <- update_theta(state$theta, state$partition, partition_ll, state$alpha, precomp$concentration)
     state$theta <- update_theta_result$theta
     state$logtheta <- lapply(state$theta, function(x) log(x))
     for (field in 1:p){

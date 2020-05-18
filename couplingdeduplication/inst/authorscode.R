@@ -42,7 +42,7 @@ rlambda=function(N,lambda=(myRLDATA$id-min(myRLDATA$id)),V,nMCMC,par.up=c(1,1,1,
                      V=as.integer(c(V)-1 ),
                      dime=as.integer(dimV),
                      a=as.double(rep(0.01,nrow(V)*ncol(V))),
-		     am=as.double(rep(log(0.01/0.99),ncol(V))),
+		                 am=as.double(rep(log(0.01/0.99),ncol(V))),
                      Hdim=as.integer(ncol(V)),
                      nMCMC=as.integer(nMCMC),
                      sima=double(nMCMC*ncol(V)),
@@ -68,27 +68,35 @@ rlambda=function(N,lambda=(myRLDATA$id-min(myRLDATA$id)),V,nMCMC,par.up=c(1,1,1,
 
 
 ##############################RUNNING THE MCMC#####################################################
-nMCMC=10000
+nMCMC=5000
 N1=2500
 g=1.02
 sigma=c(0.5, 0.1, 0.01)
 
 
 
-out1=rlambda(N=N1, #initial value for N
-            lambda=sample(min(N1,500),size=500,rep=TRUE), # initial partition
-	    V=V,     #   observed data
-	    nMCMC=nMCMC,  #number of MCMC iteration
-	    par.up=c(1,1,1,1), # which elements to update. 1,1,1,1 means all the unknowns: lambda, alpha, theta, N
-	    prior=c(0), #
-	    up.lambda=c(0.1), #probability to update a single lambda[i,j]
-	    g=g,
-	    sigma=sigma)
-
+library(doParallel)
+library(doRNG)
+registerDoParallel(cores = detectCores()-2)
+##
+authors_runs <- foreach(irep = 1:6) %dorng% {
+  out1=rlambda(N=N1, #initial value for N
+               lambda=sample(min(N1,500),size=500,rep=TRUE), # initial partition
+               V=V,     #   observed data
+               nMCMC=nMCMC,  #number of MCMC iteration
+               par.up=c(1,0,1,1), # which elements to update. 1,1,1,1 means all the unknowns: lambda, alpha, theta, N
+               prior=c(0), #
+               up.lambda=c(0.1), #probability to update a single lambda[i,j]
+               g=g,
+               sigma=sigma)
+}
+authors_runs[[1]]
+# plot(authors_runs[[1]]$NZ1)
+# plot(authors_runs[[1]]$theta[,1])
 ###################################################################################################################
-filename <- tempfile(pattern = "authorcode", tmpdir = "~/discussion_unified_framework", fileext = ".RData")
-save(out1, file = filename)
-
+filename_ <- tempfile(pattern = "authorcode", tmpdir = "~/discussion_unified_framework", fileext = ".RData")
+save(authors_runs, file = filename_)
+cat("results saved in", filename_, "\n")
 
 # 
 # ###################### FIGURE 2 PRODUCTION #######################################################################

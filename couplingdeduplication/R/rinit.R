@@ -5,7 +5,7 @@ rinit <- function(n, fieldfrequencies, hyper){
   ## initial eta 
   eta <- sample(x = 1:n, size = n, replace = T)
   ## initial N
-  N <- max(n, 2 * length(unique(eta)))
+  N <- 2500
   ## initial clustering based on eta
   partition <- couplingdeduplication:::init_clustering_cpp(eta-1)
   ## relabel clustering

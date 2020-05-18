@@ -5,5 +5,9 @@ Code/*.pdf
 ../.Rhistory
 *.o
 *.so
+**/*.o
+**/*.so
 
 .Rproj.user
+**/*.RData
+*.RData
