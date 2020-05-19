@@ -55,8 +55,8 @@ BEGIN_RCPP
 END_RCPP
 }
 // coupled_update_eta_cpp
-List coupled_update_eta_cpp(IntegerVector& eta1, IntegerVector& eta2, List& clustering1, List& clustering2, const NumericMatrix& previous_clusterloglikelihoods1, const NumericMatrix& previous_clusterloglikelihoods2, NumericMatrix& uponetajoining_loglikelihood1, NumericMatrix& uponetajoining_loglikelihood2, const List& theta1, const List& theta2, const List& logtheta1, const List& logtheta2, const IntegerMatrix& V, const NumericMatrix& alpha1, const NumericMatrix& alpha2, int N1, int N2);
-RcppExport SEXP _couplingdeduplication_coupled_update_eta_cpp(SEXP eta1SEXP, SEXP eta2SEXP, SEXP clustering1SEXP, SEXP clustering2SEXP, SEXP previous_clusterloglikelihoods1SEXP, SEXP previous_clusterloglikelihoods2SEXP, SEXP uponetajoining_loglikelihood1SEXP, SEXP uponetajoining_loglikelihood2SEXP, SEXP theta1SEXP, SEXP theta2SEXP, SEXP logtheta1SEXP, SEXP logtheta2SEXP, SEXP VSEXP, SEXP alpha1SEXP, SEXP alpha2SEXP, SEXP N1SEXP, SEXP N2SEXP) {
+List coupled_update_eta_cpp(IntegerVector& eta1, IntegerVector& eta2, List& clustering1, List& clustering2, const NumericMatrix& previous_clusterloglikelihoods1, const NumericMatrix& previous_clusterloglikelihoods2, const List& theta1, const List& theta2, const List& logtheta1, const List& logtheta2, const IntegerMatrix& V, const NumericMatrix& alpha1, const NumericMatrix& alpha2, int N1, int N2, double updateprobability);
+RcppExport SEXP _couplingdeduplication_coupled_update_eta_cpp(SEXP eta1SEXP, SEXP eta2SEXP, SEXP clustering1SEXP, SEXP clustering2SEXP, SEXP previous_clusterloglikelihoods1SEXP, SEXP previous_clusterloglikelihoods2SEXP, SEXP theta1SEXP, SEXP theta2SEXP, SEXP logtheta1SEXP, SEXP logtheta2SEXP, SEXP VSEXP, SEXP alpha1SEXP, SEXP alpha2SEXP, SEXP N1SEXP, SEXP N2SEXP, SEXP updateprobabilitySEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
@@ -66,8 +66,6 @@ BEGIN_RCPP
     Rcpp::traits::input_parameter< List& >::type clustering2(clustering2SEXP);
     Rcpp::traits::input_parameter< const NumericMatrix& >::type previous_clusterloglikelihoods1(previous_clusterloglikelihoods1SEXP);
     Rcpp::traits::input_parameter< const NumericMatrix& >::type previous_clusterloglikelihoods2(previous_clusterloglikelihoods2SEXP);
-    Rcpp::traits::input_parameter< NumericMatrix& >::type uponetajoining_loglikelihood1(uponetajoining_loglikelihood1SEXP);
-    Rcpp::traits::input_parameter< NumericMatrix& >::type uponetajoining_loglikelihood2(uponetajoining_loglikelihood2SEXP);
     Rcpp::traits::input_parameter< const List& >::type theta1(theta1SEXP);
     Rcpp::traits::input_parameter< const List& >::type theta2(theta2SEXP);
     Rcpp::traits::input_parameter< const List& >::type logtheta1(logtheta1SEXP);
@@ -77,7 +75,8 @@ BEGIN_RCPP
     Rcpp::traits::input_parameter< const NumericMatrix& >::type alpha2(alpha2SEXP);
     Rcpp::traits::input_parameter< int >::type N1(N1SEXP);
     Rcpp::traits::input_parameter< int >::type N2(N2SEXP);
-    rcpp_result_gen = Rcpp::wrap(coupled_update_eta_cpp(eta1, eta2, clustering1, clustering2, previous_clusterloglikelihoods1, previous_clusterloglikelihoods2, uponetajoining_loglikelihood1, uponetajoining_loglikelihood2, theta1, theta2, logtheta1, logtheta2, V, alpha1, alpha2, N1, N2));
+    Rcpp::traits::input_parameter< double >::type updateprobability(updateprobabilitySEXP);
+    rcpp_result_gen = Rcpp::wrap(coupled_update_eta_cpp(eta1, eta2, clustering1, clustering2, previous_clusterloglikelihoods1, previous_clusterloglikelihoods2, theta1, theta2, logtheta1, logtheta2, V, alpha1, alpha2, N1, N2, updateprobability));
     return rcpp_result_gen;
 END_RCPP
 }
@@ -116,7 +115,7 @@ static const R_CallMethodDef CallEntries[] = {
     {"_couplingdeduplication_compute_loglikelihood_one_cluster_one_field_cpp", (DL_FUNC) &_couplingdeduplication_compute_loglikelihood_one_cluster_one_field_cpp, 7},
     {"_couplingdeduplication_compute_loglikelihood_all_clusters_all_fields_cpp", (DL_FUNC) &_couplingdeduplication_compute_loglikelihood_all_clusters_all_fields_cpp, 5},
     {"_couplingdeduplication_compute_loglikelihood_all_clusters_one_field_cpp", (DL_FUNC) &_couplingdeduplication_compute_loglikelihood_all_clusters_one_field_cpp, 6},
-    {"_couplingdeduplication_coupled_update_eta_cpp", (DL_FUNC) &_couplingdeduplication_coupled_update_eta_cpp, 17},
+    {"_couplingdeduplication_coupled_update_eta_cpp", (DL_FUNC) &_couplingdeduplication_coupled_update_eta_cpp, 16},
     {"_couplingdeduplication_init_clustering_cpp", (DL_FUNC) &_couplingdeduplication_init_clustering_cpp, 1},
     {"_couplingdeduplication_update_eta_cpp", (DL_FUNC) &_couplingdeduplication_update_eta_cpp, 9},
     {NULL, NULL, 0}

@@ -97,13 +97,13 @@ single_gibbs <- function(nmcmc, V, fieldfrequencies, hyper, precomp, verbose = T
     if (verbose) cat("NA in partition ll make sense?", all(is.na(partition_ll[,1]) == (state$partition$clsize==0)), "\n")
     
     ## relabel 
-    # relabel_result <- relabel(state$eta, state$partition)
-    # state$eta <- relabel_result$eta
-    # state$partition$clsize <- state$partition$clsize[relabel_result$old_to_new]
-    # state$partition$clmembers <- state$partition$clmembers[relabel_result$old_to_new,]
-    # partition_ll <- partition_ll[relabel_result$old_to_new,]
-    # state$alpha <- state$alpha[relabel_result$old_to_new,]
-    # state$beta_diff <- state$beta_diff[relabel_result$old_to_new,]
+    relabel_result <- relabel(state$eta, state$partition)
+    state$eta <- relabel_result$eta
+    state$partition$clsize <- state$partition$clsize[relabel_result$old_to_new]
+    state$partition$clmembers <- state$partition$clmembers[relabel_result$old_to_new,]
+    partition_ll <- partition_ll[relabel_result$old_to_new,]
+    state$alpha <- state$alpha[relabel_result$old_to_new,]
+    state$beta_diff <- state$beta_diff[relabel_result$old_to_new,]
     #
     ## update of theta
     ## note: prior on theta = uniform on simplex, equivalently Dirichlet(1,1,...,1)
@@ -114,13 +114,14 @@ single_gibbs <- function(nmcmc, V, fieldfrequencies, hyper, precomp, verbose = T
       x <- state$theta[[field]] 
       cl_log_lik <- partition_ll[,field] 
       ## dirichlet proposal
-      x_propose <- gtools::rdirichlet(1, alpha = (1 + concentration * x))[1,]
+      x_propose <- rgamma(n = length(x), shape = concentration*x+1, rate = 1)
+      x_propose <- x_propose/sum(x_propose)
       logx_propose <- log(x_propose)
       cl_log_lik_new <- couplingdeduplication:::compute_loglikelihood_all_clusters_one_field_cpp(field - 1, state$partition, x_propose, logx_propose, V - 1, state$alpha)
       ## transition ratio 
-      lratio <- log(gtools::ddirichlet(x = x, alpha = (1 + concentration * x_propose))) - log(gtools::ddirichlet(x = x_propose, alpha = (1 + concentration * x)))
+      lratio <- sum((concentration*x_propose) * log(x) - (concentration*x) * log(x_propose)) + sum(lgamma(concentration*x+1) - lgamma(concentration*x_propose+1))
       ## log accept probability
-      laccept <- -lratio - sum(cl_log_lik[which(state$partition$clsize != 0)]) + sum(cl_log_lik_new[which(state$partition$clsize != 0)])
+      laccept <- lratio + sum(cl_log_lik_new[which(state$partition$clsize != 0)]) - sum(cl_log_lik[which(state$partition$clsize != 0)])
       if (log(runif(1)) < laccept){
         state$theta[[field]] <- x_propose
         state$logtheta[[field]] <- log(x_propose)
@@ -155,23 +156,24 @@ single_gibbs <- function(nmcmc, V, fieldfrequencies, hyper, precomp, verbose = T
 ## whether to print some things during the run, or not
 verbose <- TRUE
 ## number of MCMC iterations
-nmcmc <- 2e2
+nmcmc <- 1e4
 ##
 # single_gibbs_run <- single_gibbs(nmcmc = nmcmc, V = V, fieldfrequencies = fieldfrequencies, hyper = hyper, precomp = precomp, verbose = verbose)
 # plot(single_gibbs_run$ksize_history, type = 'l')
 # plot(single_gibbs_run$N_history, type = 'l')
 # matplot(single_gibbs_run$theta_history[[1]][,1:3], type = 'l')
 
-# single_gibbs_runs <- foreach(irep = 1:6) %dorng% {
-#   single_gibbs(nmcmc = nmcmc, V = V, fieldfrequencies = fieldfrequencies, hyper = hyper, precomp = precomp, verbose = verbose)
-# }
+single_gibbs_runs <- foreach(irep = 1:6) %dorng% {
+  single_gibbs(nmcmc = nmcmc, V = V, fieldfrequencies = fieldfrequencies, hyper = hyper, precomp = precomp, verbose = verbose)
+}
+# 
+filename_ <- tempfile(pattern = "single_gibbs", tmpdir = "~/discussion_unified_framework", fileext = ".RData")
+save(single_gibbs_runs, nmcmc, n, p, V, fieldfrequencies, hyper, precomp, file = filename_)
 
 # par(mfrow = c(1,1))
 # matplot(lapply(single_gibbs_runs, function(x) x$ksize_history) %>% bind_cols(), type = 'l')
 # matplot(lapply(single_gibbs_runs, function(x) x$N_history) %>% bind_cols(), type = 'l')
 
-# filename_ <- tempfile(pattern = "single_gibbs", tmpdir = "~/discussion_unified_framework", fileext = ".RData")
-# save(single_gibbs_runs, nmcmc, n, p, V, fieldfrequencies, hyper, precomp, file = filename_)
 
 # matplot(lapply(single_gibbs_runs, function(x) x$ksize_history) %>% bind_cols(), type = 'l')
 # matplot(lapply(single_gibbs_runs, function(x) x$N_history) %>% bind_cols(), type = 'l')
