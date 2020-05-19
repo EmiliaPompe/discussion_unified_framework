@@ -88,7 +88,7 @@ single_gibbs <- function(nmcmc, V, fieldfrequencies, hyper, precomp, verbose = T
     if (verbose && (imcmc %% 1 == 0)) cat("iteration", imcmc, "/", nmcmc, 'ksize = ', state$partition$ksize, 'N = ', state$N,  "\n")
     
     update_eta_result <- couplingdeduplication:::update_eta_cpp(state$eta-1, state$partition, partition_ll, state$theta, state$logtheta, V-1, 
-                                                                state$alpha, state$N)
+                                                                state$alpha, state$N, 0.1)
     state$eta <- update_eta_result$eta + 1
     partition_ll <- update_eta_result$clusterloglikelihoods
     state$partition <- update_eta_result$clustering
@@ -97,22 +97,45 @@ single_gibbs <- function(nmcmc, V, fieldfrequencies, hyper, precomp, verbose = T
     if (verbose) cat("NA in partition ll make sense?", all(is.na(partition_ll[,1]) == (state$partition$clsize==0)), "\n")
     
     ## relabel 
-    relabel_result <- relabel(state$eta, state$partition)
-    state$eta <- relabel_result$eta
-    state$partition$clsize <- state$partition$clsize[relabel_result$old_to_new]
-    state$partition$clmembers <- state$partition$clmembers[relabel_result$old_to_new,]
-    partition_ll <- partition_ll[relabel_result$old_to_new,]
-    state$alpha <- state$alpha[relabel_result$old_to_new,]
-    state$beta_diff <- state$beta_diff[relabel_result$old_to_new,]
+    # relabel_result <- relabel(state$eta, state$partition)
+    # state$eta <- relabel_result$eta
+    # state$partition$clsize <- state$partition$clsize[relabel_result$old_to_new]
+    # state$partition$clmembers <- state$partition$clmembers[relabel_result$old_to_new,]
+    # partition_ll <- partition_ll[relabel_result$old_to_new,]
+    # state$alpha <- state$alpha[relabel_result$old_to_new,]
+    # state$beta_diff <- state$beta_diff[relabel_result$old_to_new,]
+    #
     ## update of theta
     ## note: prior on theta = uniform on simplex, equivalently Dirichlet(1,1,...,1)
-    update_theta_result <- update_theta(state$theta, state$partition, partition_ll, state$alpha, precomp$concentration)
-    state$theta <- update_theta_result$theta
-    state$logtheta <- lapply(state$theta, function(x) log(x))
+    ## for each field
     for (field in 1:p){
+      concentration <- precomp$concentration
+      ## current state
+      x <- state$theta[[field]] 
+      cl_log_lik <- partition_ll[,field] 
+      ## dirichlet proposal
+      x_propose <- gtools::rdirichlet(1, alpha = (1 + concentration * x))[1,]
+      logx_propose <- log(x_propose)
+      cl_log_lik_new <- couplingdeduplication:::compute_loglikelihood_all_clusters_one_field_cpp(field - 1, state$partition, x_propose, logx_propose, V - 1, state$alpha)
+      ## transition ratio 
+      lratio <- log(gtools::ddirichlet(x = x, alpha = (1 + concentration * x_propose))) - log(gtools::ddirichlet(x = x_propose, alpha = (1 + concentration * x)))
+      ## log accept probability
+      laccept <- -lratio - sum(cl_log_lik[which(state$partition$clsize != 0)]) + sum(cl_log_lik_new[which(state$partition$clsize != 0)])
+      if (log(runif(1)) < laccept){
+        state$theta[[field]] <- x_propose
+        state$logtheta[[field]] <- log(x_propose)
+        partition_ll[,field] <- cl_log_lik_new
+      }
       theta_history[[field]][imcmc, ] <- state$theta[[field]]
     }
-    partition_ll <- update_theta_result$partition_ll
+    # update_theta_result <- update_theta(state$theta, state$partition, partition_ll, state$alpha, precomp$concentration)
+    # state$theta <- update_theta_result$theta
+    # state$logtheta <- lapply(state$theta, function(x) log(x))
+    # for (field in 1:p){
+    #   theta_history[[field]][imcmc, ] <- state$theta[[field]]
+    # }
+    # partition_ll <- update_theta_result$partition_ll
+    #
     ## update of N
     ## truncate N to N_max
     log_N_weights <- rep(-Inf, precomp$N_max)
@@ -132,26 +155,26 @@ single_gibbs <- function(nmcmc, V, fieldfrequencies, hyper, precomp, verbose = T
 ## whether to print some things during the run, or not
 verbose <- TRUE
 ## number of MCMC iterations
-nmcmc <- 5e3
+nmcmc <- 2e2
 ##
 # single_gibbs_run <- single_gibbs(nmcmc = nmcmc, V = V, fieldfrequencies = fieldfrequencies, hyper = hyper, precomp = precomp, verbose = verbose)
 # plot(single_gibbs_run$ksize_history, type = 'l')
 # plot(single_gibbs_run$N_history, type = 'l')
 # matplot(single_gibbs_run$theta_history[[1]][,1:3], type = 'l')
 
-single_gibbs_runs <- foreach(irep = 1:6) %dorng% {
-  single_gibbs(nmcmc = nmcmc, V = V, fieldfrequencies = fieldfrequencies, hyper = hyper, precomp = precomp, verbose = verbose)
-}
+# single_gibbs_runs <- foreach(irep = 1:6) %dorng% {
+#   single_gibbs(nmcmc = nmcmc, V = V, fieldfrequencies = fieldfrequencies, hyper = hyper, precomp = precomp, verbose = verbose)
+# }
 
 # par(mfrow = c(1,1))
 # matplot(lapply(single_gibbs_runs, function(x) x$ksize_history) %>% bind_cols(), type = 'l')
 # matplot(lapply(single_gibbs_runs, function(x) x$N_history) %>% bind_cols(), type = 'l')
 
-filename_ <- tempfile(pattern = "single_gibbs", tmpdir = "~/discussion_unified_framework", fileext = ".RData")
-save(single_gibbs_runs, nmcmc, n, p, V, fieldfrequencies, hyper, precomp, file = filename_)
+# filename_ <- tempfile(pattern = "single_gibbs", tmpdir = "~/discussion_unified_framework", fileext = ".RData")
+# save(single_gibbs_runs, nmcmc, n, p, V, fieldfrequencies, hyper, precomp, file = filename_)
 
-matplot(lapply(single_gibbs_runs, function(x) x$ksize_history) %>% bind_cols(), type = 'l')
-matplot(lapply(single_gibbs_runs, function(x) x$N_history) %>% bind_cols(), type = 'l')
+# matplot(lapply(single_gibbs_runs, function(x) x$ksize_history) %>% bind_cols(), type = 'l')
+# matplot(lapply(single_gibbs_runs, function(x) x$N_history) %>% bind_cols(), type = 'l')
 
 
 # ## trace plots

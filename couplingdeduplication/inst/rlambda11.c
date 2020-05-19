@@ -335,11 +335,15 @@ void  rlambda11(int Nlambda[], int lambda[], double p[], int V[], int dime[],
                                 prob_M_new[lambda[j]+n*h]=
                                     prob_M_new[lambda[j]+n*h]*( (V[i+n*h]==V[j+n*h])*(1-a[h*n+lambda[j]])+a[h*n+lambda[j]]*p_prop[cumdime[h]+V[i+n*h] ]);
                                 prob_M_old[lambda[j]+n*h]=
-                                    prob_M_old[lambda[j]+n*h]*( (V[i+n*h]==V[j+n*h])*(1-a[h*n+lambda[j]])+a[h*n+lambda[j]]*p[cumdime[h]+V[i+n*h] ]);}  }
+                                    prob_M_old[lambda[j]+n*h]*( (V[i+n*h]==V[j+n*h])*(1-a[h*n+lambda[j]])+a[h*n+lambda[j]]*p[cumdime[h]+V[i+n*h] ]);
+                            }  
+                        }
                         prob_M_new[lambda[j]+n*h]=
-                            a[h*n+lambda[j]]*p_prop[cumdime[h]+V[j+n*h]]*pcluster_M_new[lambda[j]+n*h]+(1-a[h*n+lambda[j]])*p_prop[V[j+n*h]+cumdime[h]]*prob_M_new[lambda[j]+n*h];
+                            a[h*n+lambda[j]]*p_prop[cumdime[h]+V[j+n*h]]*pcluster_M_new[lambda[j]+n*h]+
+                                (1-a[h*n+lambda[j]])*p_prop[V[j+n*h]+cumdime[h]]*prob_M_new[lambda[j]+n*h];
                         prob_M_old[lambda[j]+n*h]     =
-                            a[h*n+lambda[j]]*p[cumdime[h]+V[j+n*h]]*pcluster_M_old[lambda[j]+n*h]+(1-     a[h*n+lambda[j]])*p[V[j+n*h]+cumdime[h]]*prob_M_old[lambda[j]+n*h];
+                            a[h*n+lambda[j]]*p[cumdime[h]+V[j+n*h]]*pcluster_M_old[lambda[j]+n*h]+
+                                (1-a[h*n+lambda[j]])*p[V[j+n*h]+cumdime[h]]*prob_M_old[lambda[j]+n*h];
                         logpcond_aSC_new[lambda[j]+n*h]=
                             log(prob_M_new[lambda[j]+n*h]/pcluster_M_new[lambda[j]+n*h]);
                         logpcond_aSC_old[lambda[j]+n*h]=
@@ -367,6 +371,7 @@ void  rlambda11(int Nlambda[], int lambda[], double p[], int V[], int dime[],
                     lqratio=lqratio+(cdir*p[cumdime[h]+k])*log(p_prop[cumdime[h]+k])-(cdir*p_prop[cumdime[h]+k])*log(p[cumdime[h]+k])+
                         lgamma(cdir*p_prop[cumdime[h]+k]+1.0)-lgamma(cdir*p[cumdime[h]+k]+1.0);
                 }
+                // WARNING: should lqratio be negated here??
                 if (unif_rand()<exp(logpcond_a_new[h]-logpcond_a_old[h]+lqratio)){
                     for (k=0;k<dime[h];k++) p[cumdime[h]+k]=p_prop[cumdime[h]+k];
                 }

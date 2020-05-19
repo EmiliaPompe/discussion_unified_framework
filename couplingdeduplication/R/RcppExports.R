@@ -21,7 +21,7 @@ init_clustering_cpp <- function(eta) {
     .Call('_couplingdeduplication_init_clustering_cpp', PACKAGE = 'couplingdeduplication', eta)
 }
 
-update_eta_cpp <- function(eta, clustering, previous_clusterloglikelihoods, theta, logtheta, V, alpha, N) {
-    .Call('_couplingdeduplication_update_eta_cpp', PACKAGE = 'couplingdeduplication', eta, clustering, previous_clusterloglikelihoods, theta, logtheta, V, alpha, N)
+update_eta_cpp <- function(eta, clustering, previous_clusterloglikelihoods, theta, logtheta, V, alpha, N, updateprobability) {
+    .Call('_couplingdeduplication_update_eta_cpp', PACKAGE = 'couplingdeduplication', eta, clustering, previous_clusterloglikelihoods, theta, logtheta, V, alpha, N, updateprobability)
 }
 
