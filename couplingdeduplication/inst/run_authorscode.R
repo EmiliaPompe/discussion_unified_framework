@@ -1,8 +1,5 @@
 ## this script essentially runs the authors' code and saves the output
-## at the moment it's messy, with hardcoded paths and so on
 ## requires 'rlambda11.c' to be in the working directory
-## set up by the following line
-setwd("~/discussion_unified_framework/couplingdeduplication/inst/")
 
 ##################DATA PREPARATION############################
 library(RecordLinkage)
@@ -41,31 +38,31 @@ dyn.load("rlambda11.so")
 
 
 rlambda=function(N,lambda=(myRLDATA$id-min(myRLDATA$id)),V,nMCMC,par.up=c(1,1,1,1),prior=c(0),up.lambda=c(0.15),g,sigma){
-    tmp=.C("rlambda11",Nlambda=as.integer(N),
-                     lambda=as.integer(lambda),
-                     p=as.double(unlist(ALPHA)),
-                     V=as.integer(c(V)-1 ),
-                     dime=as.integer(dimV),
-                     a=as.double(rep(0.01,nrow(V)*ncol(V))),
-		                 am=as.double(rep(log(0.01/0.99),ncol(V))),
-                     Hdim=as.integer(ncol(V)),
-                     nMCMC=as.integer(nMCMC),
-                     sima=double(nMCMC*ncol(V)),
-                     simlambda=integer(nMCMC*nrow(V)),
-                     simnz=integer(nMCMC),
-                     simNpop=integer(nMCMC),
-                     n=as.integer(nrow(V)),
-                     par.up=as.integer(par.up),
-                     prior=as.integer(prior),
-                     up.lambda=as.double(up.lambda),
-                     gzeta=as.double(g),
-		     sigmal=as.double(sigma),
-		     simp=double(nMCMC*sum(dimV)))
-    return(list(LAMBDA=matrix(tmp$simlambda,ncol=nrow(V),byrow=T),
-                NZ1=c(tmp$simnz),
-                Npop=c(tmp$simNpop),
-                PAR=matrix(tmp$sima,ncol=ncol(V),byrow=T),
-		theta=matrix(c(tmp$simp),ncol=sum(dimV),byrow=T)))}
+  tmp=.C("rlambda11",Nlambda=as.integer(N),
+         lambda=as.integer(lambda),
+         p=as.double(unlist(ALPHA)),
+         V=as.integer(c(V)-1 ),
+         dime=as.integer(dimV),
+         a=as.double(rep(0.01,nrow(V)*ncol(V))),
+         am=as.double(rep(log(0.01/0.99),ncol(V))),
+         Hdim=as.integer(ncol(V)),
+         nMCMC=as.integer(nMCMC),
+         sima=double(nMCMC*ncol(V)),
+         simlambda=integer(nMCMC*nrow(V)),
+         simnz=integer(nMCMC),
+         simNpop=integer(nMCMC),
+         n=as.integer(nrow(V)),
+         par.up=as.integer(par.up),
+         prior=as.integer(prior),
+         up.lambda=as.double(up.lambda),
+         gzeta=as.double(g),
+         sigmal=as.double(sigma),
+         simp=double(nMCMC*sum(dimV)))
+  return(list(LAMBDA=matrix(tmp$simlambda,ncol=nrow(V),byrow=T),
+              NZ1=c(tmp$simnz),
+              Npop=c(tmp$simNpop),
+              PAR=matrix(tmp$sima,ncol=ncol(V),byrow=T),
+              theta=matrix(c(tmp$simp),ncol=sum(dimV),byrow=T)))}
 
 #########################################################################################################################
 
@@ -73,7 +70,7 @@ rlambda=function(N,lambda=(myRLDATA$id-min(myRLDATA$id)),V,nMCMC,par.up=c(1,1,1,
 
 
 ##############################RUNNING THE MCMC#####################################################
-nMCMC=2e4
+nMCMC=2e3
 N1=2500
 g=1.02
 sigma=c(0.5, 0.1, 0.01)
@@ -83,6 +80,9 @@ library(doParallel)
 library(doRNG)
 registerDoParallel(cores = detectCores()-2)
 ##
+print("update of eta and N")
+## run with updates of eta and N 
+## 5 chains independently
 authors_runs <- foreach(irep = 1:5) %dorng% {
   out1=rlambda(N=N1, #initial value for N
                lambda=sample(min(N1,500),size=500,rep=TRUE), # initial partition
@@ -94,13 +94,21 @@ authors_runs <- foreach(irep = 1:5) %dorng% {
                g=g,
                sigma=sigma)
 }
-authors_runs[[1]]
-# plot(authors_runs[[1]]$NZ1)
-# plot(authors_runs[[1]]$theta[,1])
-###################################################################################################################
-# filename_ <- tempfile(pattern = "authorcode", tmpdir = "~/discussion_unified_framework", fileext = ".RData")
-# filename_ <- "~/discussion_unified_framework/authorcode_lambda_N.RData"
-# filename_ <- "~/discussion_unified_framework/authorcode_lambda_theta_N.RData"
-# save(authors_runs, file = filename_)
-# cat("results saved in", filename_, "\n")
+save(nMCMC, authors_runs, file = "authorcode_eta_N.RData")
+
+print("update of eta, theta and N")
+## run with updates of eta, theta and N 
+## 5 chains independently
+authors_runs <- foreach(irep = 1:5) %dorng% {
+  out1=rlambda(N=N1, #initial value for N
+               lambda=sample(min(N1,500),size=500,rep=TRUE), # initial partition
+               V=V,     #   observed data
+               nMCMC=nMCMC,  #number of MCMC iteration
+               par.up=c(1,0,1,1), # which elements to update. 1,1,1,1 means all the unknowns: lambda, alpha, theta, N
+               prior=c(0), #
+               up.lambda=c(0.1), #probability to update a single lambda[i,j]
+               g=g,
+               sigma=sigma)
+}
+save(nMCMC, authors_runs, file = "authorcode_eta_theta_N.RData")
 
