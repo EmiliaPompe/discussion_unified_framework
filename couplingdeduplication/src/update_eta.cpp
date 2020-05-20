@@ -36,10 +36,10 @@ List update_eta(IntegerVector & eta,
   NumericMatrix clusterloglikelihoods = clone(previous_clusterloglikelihoods);
   // 
   NumericVector newblock_loglikelihood = no_init(p);
-  NumericVector theta_field;
-  NumericVector logtheta_field;
   NumericMatrix uponetajoining_loglikelihood = no_init(n,p);
   NumericVector logproba_eta = no_init(n);
+  NumericVector theta_field;
+  NumericVector logtheta_field;
   NumericVector uniform;
   GetRNGstate();
   NumericVector unifs_ = runif(n);
@@ -53,51 +53,18 @@ List update_eta(IntegerVector & eta,
                                   ksize, clmembers, clsize,
                                   clusterloglikelihoods,
                                   theta, logtheta, V, alpha);
-      // now we have a clustering and associated log likelihoods as if we did not have eta[ieta] in the partition
-      // next we can compute the likelihood associated with a new block with that label in it
-      for (int field = 0; field < p; field++){
-        logtheta_field = logtheta[field];
-        newblock_loglikelihood(field) = logtheta_field(V(ieta,field));
-      }
-      // vector to aggregate likelihood and prior probabilities for new label
-      std::fill(logproba_eta.begin(), logproba_eta.end(), 0.);
-      // next we loop over clusters
-      for (int icluster = 0; icluster < n; icluster ++){
-        // first compute likelihoods of joining
-        if (clsize[icluster]==0){
-          // this would be a new cluster
-          uponetajoining_loglikelihood.row(icluster) = newblock_loglikelihood;
-        } else {
-          // this would be an existing cluster
-          for (int field = 0; field < p; field++){
-            theta_field = theta[field];
-            logtheta_field = logtheta[field];
-            // first part of recursion
-            uponetajoining_loglikelihood(icluster, field) = log(alpha(icluster,field)) + logtheta_field(V(ieta,field)) + 
-              clusterloglikelihoods(icluster,field);
-            double logprod = 0.;
-            // next, implement second part of recursion
-            for (int clustermember = 0; clustermember < clsize[icluster]; clustermember ++){
-              int qprime = clmembers(icluster, clustermember);
-              logprod += log((1 - alpha(icluster,field)) * (V(ieta,field) == V(qprime,field)) + alpha(icluster,field) * theta_field(V(qprime,field)));
-            }
-            logprod += log(1 - alpha(icluster,field)) + logtheta_field(V(ieta,field));
-            double max_logs = std::max(logprod, uponetajoining_loglikelihood(icluster, field));
-            uponetajoining_loglikelihood(icluster, field) = max_logs + log(exp(logprod - max_logs) + exp(uponetajoining_loglikelihood(icluster, field) - max_logs));
-          }
-        }
-        // then aggregate priors and conditional likelihood
-        if (clsize[icluster] == 0){
-          // i.e. P(eta[ieta] = q) where q is the label of a new block
-          logproba_eta[icluster] = sum(uponetajoining_loglikelihood.row(icluster));
-          // logproba_eta[icluster] += (log(N-ksize)); // CAREFUL CHECK - log(n-ksize));
-          logproba_eta[icluster] += (log(N-ksize) - log(n-ksize)); // CAREFUL CHECK!!
-          // note that when N = ksize this should be -Inf so it becomes impossible to create a new cluster 
-        } else {
-          logproba_eta[icluster] = sum(uponetajoining_loglikelihood.row(icluster) - clusterloglikelihoods.row(icluster));
-          logproba_eta[icluster] += 0.;
-        }
-      }
+      // compute probability for new eta given the other variables 
+      compute_proba_eta(uponetajoining_loglikelihood, 
+                        logproba_eta, 
+                        newblock_loglikelihood, theta_field, logtheta_field, 
+                        ieta, p, n, 
+                        clsize,
+                        clmembers,
+                        clusterloglikelihoods,
+                        theta, logtheta,
+                        V,
+                        alpha,
+                        N, ksize);
       // sample from categorical/multinomial given logproba_eta
       GetRNGstate();
       NumericVector u = runif(1);

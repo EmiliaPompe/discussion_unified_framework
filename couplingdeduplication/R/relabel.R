@@ -1,6 +1,7 @@
 ## function to perform re-labeling
 ## goes through each cluster and gives it the label
 ## of smallest index among members of the cluster
+## returns new eta and also a vector that can be used to permute vectors or matrices indexed by labels 
 #'@export
 relabel <- function(eta, clustering){
   n <- length(eta)

@@ -56,93 +56,40 @@ List coupled_update_eta(
     if (unifs_[ieta] < updateprobability){
       int label1 = eta1[ieta];
       int label2 = eta2[ieta];
-      // Rcout << "removing labels..." << endl;
       remove_label_from_partition(ieta, label1,
                                   ksize1, clmembers1, clsize1,
                                   clusterloglikelihoods1,
                                   theta1, logtheta1, V, alpha1);
-      // Rcout << "... partially done..." << endl;
       remove_label_from_partition(ieta, label2,
                                   ksize2, clmembers2, clsize2,
                                   clusterloglikelihoods2,
                                   theta2, logtheta2, V, alpha2);
-      // Rcout << "... done" << endl;
-      // now we have a clustering and associated log likelihoods as if we did not have eta[ieta] in the partition
-      // next we can compute the likelihood associated with a new block with that label in it
-      for (int field = 0; field < p; field++){
-        logtheta_field1 = logtheta1[field];
-        newblock_loglikelihood1(field) = logtheta_field1(V(ieta,field));
-        logtheta_field2 = logtheta2[field];
-        newblock_loglikelihood2(field) = logtheta_field2(V(ieta,field));
-      }
-      // vector to aggregate likelihood and prior probabilities for new label
-      std::fill(logproba_eta1.begin(), logproba_eta1.end(), 0.);
-      std::fill(logproba_eta2.begin(), logproba_eta2.end(), 0.);
-      // next we loop over clusters
-      for (int icluster = 0; icluster < n; icluster ++){
-        // first compute likelihoods of joining
-        if (clsize1[icluster]==0){
-          // this would be a new cluster
-          uponetajoining_loglikelihood1.row(icluster) = newblock_loglikelihood1;
-        } else {
-          // this would be an existing cluster
-          for (int field = 0; field < p; field++){
-            theta_field1 = theta1[field];
-            logtheta_field1 = logtheta1[field];
-            // first part of recursion
-            uponetajoining_loglikelihood1(icluster, field) = log(alpha1(icluster,field)) + logtheta_field1(V(ieta,field)) +
-              clusterloglikelihoods1(icluster,field);
-            double logprod = 0.;
-            // next, implement second part of recursion
-            for (int clustermember = 0; clustermember < clsize1[icluster]; clustermember ++){
-              int qprime = clmembers1(icluster, clustermember);
-              logprod += log((1 - alpha1(icluster,field)) * (V(ieta,field) == V(qprime,field)) + alpha1(icluster,field) * theta_field1(V(qprime,field)));
-            }
-            logprod += log(1 - alpha1(icluster,field)) + logtheta_field1(V(ieta,field));
-            double max_logs = std::max(logprod, uponetajoining_loglikelihood1(icluster, field));
-            uponetajoining_loglikelihood1(icluster, field) = max_logs + log(exp(logprod - max_logs) + exp(uponetajoining_loglikelihood1(icluster, field) - max_logs));
-          }
-        }
-        // first compute likelihoods of joining
-        if (clsize2[icluster]==0){
-          // this would be a new cluster
-          uponetajoining_loglikelihood2.row(icluster) = newblock_loglikelihood2;
-        } else {
-          // this would be an existing cluster
-          for (int field = 0; field < p; field++){
-            theta_field2 = theta2[field];
-            logtheta_field2 = logtheta2[field];
-            // first part of recursion
-            uponetajoining_loglikelihood2(icluster, field) = log(alpha2(icluster,field)) + logtheta_field2(V(ieta,field)) +
-              clusterloglikelihoods2(icluster,field);
-            double logprod = 0.;
-            // next, implement second part of recursion
-            for (int clustermember = 0; clustermember < clsize2[icluster]; clustermember ++){
-              int qprime = clmembers2(icluster, clustermember);
-              logprod += log((1 - alpha2(icluster,field)) * (V(ieta,field) == V(qprime,field)) + alpha2(icluster,field) * theta_field2(V(qprime,field)));
-            }
-            logprod += log(1 - alpha2(icluster,field)) + logtheta_field2(V(ieta,field));
-            double max_logs = std::max(logprod, uponetajoining_loglikelihood2(icluster, field));
-            uponetajoining_loglikelihood2(icluster, field) = max_logs + log(exp(logprod - max_logs) + exp(uponetajoining_loglikelihood2(icluster, field) - max_logs));
-          }
-        }
-        // then aggregate priors and conditional likelihood
-        if (clsize1[icluster] == 0){
-          logproba_eta1[icluster] = sum(uponetajoining_loglikelihood1.row(icluster));
-          logproba_eta1[icluster] += (log(N1-ksize1) - log(n-ksize1)); 
-        } else {
-          logproba_eta1[icluster] = sum(uponetajoining_loglikelihood1.row(icluster) - clusterloglikelihoods1.row(icluster));
-          logproba_eta1[icluster] += 0.;
-        }
-        if (clsize2[icluster] == 0){
-          logproba_eta2[icluster] = sum(uponetajoining_loglikelihood2.row(icluster));
-          logproba_eta2[icluster] += (log(N2-ksize2) - log(n-ksize2)); 
-        } else {
-          logproba_eta2[icluster] = sum(uponetajoining_loglikelihood2.row(icluster) - clusterloglikelihoods2.row(icluster));
-          logproba_eta2[icluster] += 0.;
-        }
-      }
+
+      // compute probability for new eta given the other variables 
+      compute_proba_eta(uponetajoining_loglikelihood1, 
+                        logproba_eta1, 
+                        newblock_loglikelihood1, theta_field1, logtheta_field1, 
+                        ieta, p, n, 
+                        clsize1,
+                        clmembers1,
+                        clusterloglikelihoods1,
+                        theta1, logtheta1,
+                        V,
+                        alpha1,
+                        N1, ksize1);
       
+      // compute probability for new eta given the other variables 
+      compute_proba_eta(uponetajoining_loglikelihood2, 
+                        logproba_eta2, 
+                        newblock_loglikelihood2, theta_field2, logtheta_field2, 
+                        ieta, p, n, 
+                        clsize2,
+                        clmembers2,
+                        clusterloglikelihoods2,
+                        theta2, logtheta2,
+                        V,
+                        alpha2,
+                        N2, ksize2);
       // sample from maximal coupling given logproba_eta1, logproba_eta2
       GetRNGstate();
       NumericVector uniforms = runif(2); 

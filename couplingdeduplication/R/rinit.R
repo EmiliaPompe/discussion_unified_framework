@@ -1,4 +1,7 @@
 ## Initialization of the chains
+## n the number of rows in the data
+## fieldfrequencies frequencies of appearance of each element in each field (list of vectors)
+## hyper a list of hyperparameters including m0, s0, s
 #'@export
 rinit <- function(n, fieldfrequencies, hyper){
   ## The state of the Markov chain  is (eta, N, beta_0, beta_diff, theta)
