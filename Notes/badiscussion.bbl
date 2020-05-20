@@ -1,0 +1,78 @@
+\begin{thebibliography}{9}
+\newcommand{\enquote}[1]{``#1''}
+\expandafter\ifx\csname natexlab\endcsname\relax\def\natexlab#1{#1}\fi
+\expandafter\ifx\csname url\endcsname\relax
+  \def\url#1{{\tt #1}}\fi
+\expandafter\ifx\csname urlprefix\endcsname\relax\def\urlprefix{URL }\fi
+\ifx\endbibitem\undefined \let\endbibitem\relax\fi
+
+\bibitem[{Biswas et~al.(2019)Biswas, Jacob, and Vanetti}]{biswas2019estimating}
+Biswas, N., Jacob, P.~E., and Vanetti, P. (2019).
+\newblock \enquote{{Estimating convergence of Markov chains with L-lag
+  couplings}.}
+\newblock In {\em Advances in Neural Information Processing Systems\/},
+  7389--7399.
+\endbibitem
+
+\bibitem[{Fr{\"u}hwirth-Schnatter(2011)}]{fruhwirth2011label}
+Fr{\"u}hwirth-Schnatter, S. (2011).
+\newblock \enquote{Label switching under model uncertainty.}
+\newblock {\em Mixtures: Estimation and Application\/}, 213--239.
+\endbibitem
+
+\bibitem[{Glynn and Rhee(2014)}]{glynn2014exact}
+Glynn, P.~W. and Rhee, C.-h. (2014).
+\newblock \enquote{{Exact estimation for Markov chain equilibrium
+  expectations}.}
+\newblock {\em Journal of Applied Probability\/}, 51(A): 377--389.
+\endbibitem
+
+\bibitem[{Jacob et~al.(2020)Jacob, O'Leary, and
+  Atchad{\'e}}]{jacob2017unbiased}
+Jacob, P.~E., O'Leary, J., and Atchad{\'e}, Y.~F. (2020).
+\newblock \enquote{Unbiased \uppercase{M}arkov chain \uppercase{M}onte
+  \uppercase{C}arlo with couplings.}
+\newblock {\em Journal of the Royal Statistical Society: Series B (Statistical
+  Methodology) (with discussion) (to appear)\/}.
+\endbibitem
+
+\bibitem[{Johnson(1996)}]{valen_johnson_1996}
+Johnson, V.~E. (1996).
+\newblock \enquote{Studying Convergence of {M}arkov Chain {M}onte {C}arlo
+  Algorithms Using Coupled Sample Paths.}
+\newblock {\em Journal of the American Statistical Association\/}, 91(433):
+  154--166.
+\endbibitem
+
+\bibitem[{Johnson(1998)}]{johnson1998coupling}
+--- (1998).
+\newblock \enquote{{A coupling-regeneration scheme for diagnosing convergence
+  in Markov chain Monte Carlo algorithms}.}
+\newblock {\em Journal of the American Statistical Association\/}, 93(441):
+  238--248.
+\endbibitem
+
+\bibitem[{Marin et~al.(2005)Marin, Mengersen, and Robert}]{marin2005bayesian}
+Marin, J.-M., Mengersen, K., and Robert, C.~P. (2005).
+\newblock \enquote{Bayesian modelling and inference on mixtures of
+  distributions.}
+\newblock {\em Handbook of statistics\/}, 25: 459--507.
+\endbibitem
+
+\bibitem[{Nikooienejad et~al.(2016)Nikooienejad, Wang, and
+  Johnson}]{Nikooienejad2016}
+Nikooienejad, A., Wang, W., and Johnson, V.~E. (2016).
+\newblock \enquote{{Bayesian variable selection for binary outcomes in
+  high-dimensional genomic studies using non-local priors}.}
+\newblock {\em Bioinformatics\/}, 32(9): 1338--1345.
+\newline\urlprefix\url{https://doi.org/10.1093/bioinformatics/btv764}
+\endbibitem
+
+\bibitem[{Stephens(2000)}]{stephens2000dealing}
+Stephens, M. (2000).
+\newblock \enquote{Dealing with label switching in mixture models.}
+\newblock {\em Journal of the Royal Statistical Society: Series B (Statistical
+  Methodology)\/}, 62(4): 795--809.
+\endbibitem
+
+\end{thebibliography}

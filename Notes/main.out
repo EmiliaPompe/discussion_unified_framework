@@ -1,0 +1,12 @@
+\BOOKMARK [1][-]{section.1}{Context, model and target distribution}{}% 1
+\BOOKMARK [1][-]{section.2}{Conditional distributions and Gibbs sampling}{}% 2
+\BOOKMARK [2][-]{subsection.2.1}{Draw \040given the rest}{section.2}% 3
+\BOOKMARK [2][-]{subsection.2.2}{Draw N given the rest}{section.2}% 4
+\BOOKMARK [2][-]{subsection.2.3}{Draw \040given the rest}{section.2}% 5
+\BOOKMARK [2][-]{subsection.2.4}{Draw = \(', 0\) given the rest}{section.2}% 6
+\BOOKMARK [1][-]{section.3}{Coupling of each update}{}% 7
+\BOOKMARK [2][-]{subsection.3.1}{eta given the rest}{section.3}% 8
+\BOOKMARK [2][-]{subsection.3.2}{N given the rest}{section.3}% 9
+\BOOKMARK [2][-]{subsection.3.3}{theta given the rest}{section.3}% 10
+\BOOKMARK [2][-]{subsection.3.4}{beta given the rest}{section.3}% 11
+\BOOKMARK [1][-]{section.4}{Numerical experiments}{}% 12
