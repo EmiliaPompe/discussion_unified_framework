@@ -68,7 +68,7 @@ rlambda=function(N,lambda=(myRLDATA$id-min(myRLDATA$id)),V,nMCMC,par.up=c(1,1,1,
 
 
 ##############################RUNNING THE MCMC#####################################################
-nMCMC=5000
+nMCMC=2e4
 N1=2500
 g=1.02
 sigma=c(0.5, 0.1, 0.01)
@@ -79,12 +79,12 @@ library(doParallel)
 library(doRNG)
 registerDoParallel(cores = detectCores()-2)
 ##
-authors_runs <- foreach(irep = 1:6) %dorng% {
+authors_runs <- foreach(irep = 1:5) %dorng% {
   out1=rlambda(N=N1, #initial value for N
                lambda=sample(min(N1,500),size=500,rep=TRUE), # initial partition
                V=V,     #   observed data
                nMCMC=nMCMC,  #number of MCMC iteration
-               par.up=c(1,0,1,1), # which elements to update. 1,1,1,1 means all the unknowns: lambda, alpha, theta, N
+               par.up=c(1,0,0,1), # which elements to update. 1,1,1,1 means all the unknowns: lambda, alpha, theta, N
                prior=c(0), #
                up.lambda=c(0.1), #probability to update a single lambda[i,j]
                g=g,
@@ -94,7 +94,9 @@ authors_runs[[1]]
 # plot(authors_runs[[1]]$NZ1)
 # plot(authors_runs[[1]]$theta[,1])
 ###################################################################################################################
-filename_ <- tempfile(pattern = "authorcode", tmpdir = "~/discussion_unified_framework", fileext = ".RData")
+# filename_ <- tempfile(pattern = "authorcode", tmpdir = "~/discussion_unified_framework", fileext = ".RData")
+filename_ <- "~/discussion_unified_framework/authorcode_lambda_N.RData"
+# filename_ <- "~/discussion_unified_framework/authorcode_lambda_theta_N.RData"
 save(authors_runs, file = filename_)
 cat("results saved in", filename_, "\n")
 

@@ -60,21 +60,24 @@ precomp$concentration <- 10000
 ## whether to print some things during the run, or not
 verbose <- TRUE
 ## number of MCMC iterations
-nmcmc <- 2e2
+nmcmc <- 1e4
 ##
-single_gibbs_run <- single_gibbs(nmcmc = nmcmc, V = V, fieldfrequencies = fieldfrequencies,
-                                 hyper = hyper, precomp = precomp, verbose = verbose)
-plot(single_gibbs_run$ksize_history[5:nmcmc], type = 'l')
-##
-plot(single_gibbs_run$N_history[50:nmcmc], type = 'l')
+# single_gibbs_run <- single_gibbs(nmcmc = nmcmc, V = V, fieldfrequencies = fieldfrequencies,
+#                                  hyper = hyper, precomp = precomp, update.theta = FALSE, verbose = verbose)
+# plot(single_gibbs_run$ksize_history[5:nmcmc], type = 'l')
+# ##
+# plot(single_gibbs_run$N_history[50:nmcmc], type = 'l')
 # matplot(single_gibbs_run$theta_history[[1]][,1:3], type = 'l')
 
 single_gibbs_runs <- foreach(irep = 1:6) %dorng% {
-  single_gibbs(nmcmc = nmcmc, V = V, fieldfrequencies = fieldfrequencies, hyper = hyper, precomp = precomp, verbose = verbose)
+  single_gibbs(nmcmc = nmcmc, V = V, fieldfrequencies = fieldfrequencies, hyper = hyper, precomp = precomp,
+               update.theta = FALSE, verbose = verbose)
 }
 
 
-# 
+filename_ <- "~/discussion_unified_framework/single_gibbs_update_eta_N.RData"
+save(single_gibbs_runs, nmcmc, n, p, V, fieldfrequencies, hyper, precomp, file = filename_)
+
 # filename_ <- tempfile(pattern = "single_gibbs_update_eta_N_theta", tmpdir = "~/discussion_unified_framework", fileext = ".RData")
 # save(single_gibbs_runs, nmcmc, n, p, V, fieldfrequencies, hyper, precomp, file = filename_)
 

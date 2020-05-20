@@ -9,21 +9,37 @@ setwd("~/discussion_unified_framework/")
 ## load results from our own sampler
 
 ## update only of N and eta
-# load("~/discussion_unified_framework/single_gibbs1188f66a9d07a.RData")
+
+load("~/discussion_unified_framework/single_gibbs149c9406e5fa9.RData")
+# load("~/discussion_unified_framework/single_gibbs_update_eta_N_theta185d1775198c5.RData")
 # load("~/discussion_unified_framework/authorcode11b164f86a377.RData")
 
+if ("theta_history" %in% names(single_gibbs_runs[[1]])){
+  print(head(single_gibbs_runs[[1]]$theta_history[[1]][,1:5]))
+}
 
-load("~/discussion_unified_framework/single_gibbs_update_eta_N_theta185d1775198c5.RData")
-
-load("~/discussion_unified_framework/authorcode11dea15c19bc0.RData")
-
-
-single_gibbs_runs[[1]]$theta_history[[1]][1:10,1:10]
-authors_runs[[1]]$theta[1:10,1:10]
-authors_runs[[1]]$PAR[1:10,1:10]
-  
+nmcmc <- length(single_gibbs_runs[[1]]$ksize_history)
 matplot(lapply(single_gibbs_runs, function(x) x$ksize_history[100:10000]) %>% bind_cols(), type = 'l')
-matplot(lapply(authors_runs, function(x) x$NZ1[50:1000]) %>% bind_cols(), type = 'l')
+
+
+# load("~/discussion_unified_framework/authorcode11dea15c19bc0.RData")
+load("~/discussion_unified_framework/authorcode_lambda_N.RData")
+
+# single_gibbs_runs[[1]]$theta_history[[1]][1:10,1:10]
+
+## is this a run with a theta update?
+authors_runs[[1]]$theta[1:10,1:10]
+## is this a run with a beta update?
+authors_runs[[1]]$PAR[1:10,1:10]
+
+
+authors_run_nmcmc <- length(authors_runs[[1]]$NZ1)
+authors_run_mcmc_subset <- floor(seq(from = authors_run_nmcmc/10, to = authors_run_nmcmc, length.out = 1e3))
+
+## size of the partition, i.e. number of non-empty clusters
+matplot(x = authors_run_mcmc_subset, y = lapply(authors_runs, function(x) x$NZ1[authors_run_mcmc_subset]) %>% bind_cols(), type = 'l')
+
+
 
 matplot(lapply(single_gibbs_runs, function(x) x$N_history[100:10000]) %>% bind_cols(), type = 'l')
 matplot(lapply(authors_runs, function(x) x$Npop[100:1000]) %>% bind_cols(), type = 'l')
