@@ -13,11 +13,7 @@ setwd("~/discussion_unified_framework/")
 # load("~/discussion_unified_framework/authorcode11b164f86a377.RData")
 
 
-# load("~/discussion_unified_framework/single_gibbs11dcb77b07686.RData")
-# load("~/discussion_unified_framework/single_gibbs1387d234112f7.RData")
-# load("~/discussion_unified_framework/single_gibbs139a83397c884.RData")
-# load("~/discussion_unified_framework/single_gibbs147a4288bf44d.RData")
-load("~/discussion_unified_framework/single_gibbs149c9406e5fa9.RData")
+load("~/discussion_unified_framework/single_gibbs_update_eta_N_theta185d1775198c5.RData")
 
 load("~/discussion_unified_framework/authorcode11dea15c19bc0.RData")
 
@@ -27,17 +23,17 @@ authors_runs[[1]]$theta[1:10,1:10]
 authors_runs[[1]]$PAR[1:10,1:10]
   
 matplot(lapply(single_gibbs_runs, function(x) x$ksize_history[100:10000]) %>% bind_cols(), type = 'l')
-matplot(lapply(authors_runs, function(x) x$NZ1[100:5000]) %>% bind_cols(), type = 'l')
+matplot(lapply(authors_runs, function(x) x$NZ1[50:1000]) %>% bind_cols(), type = 'l')
 
 matplot(lapply(single_gibbs_runs, function(x) x$N_history[100:10000]) %>% bind_cols(), type = 'l')
-matplot(lapply(authors_runs, function(x) x$Npop[100:5000]) %>% bind_cols(), type = 'l')
+matplot(lapply(authors_runs, function(x) x$Npop[100:1000]) %>% bind_cols(), type = 'l')
 
 ### comparison of number of clusters in the partition
 authors_ksize <- unlist(lapply(authors_runs, function(x) x$NZ1[100:5000]))
-table(authors_ksize) / length(authors_ksize)
+round(table(authors_ksize) / length(authors_ksize),3)
 # 
 own_ksize <- unlist(lapply(single_gibbs_runs, function(x) x$ksize_history[100:10000]))
-table(own_ksize) / length(own_ksize)
+round(table(own_ksize) / length(own_ksize), 3)
 # 
 hist(authors_ksize, prob = T)
 hist(own_ksize, prob = T, add = T, col = rgb(1,0,0,0.5))
@@ -67,4 +63,4 @@ hist(authors_theta12, prob = T, nclass = 30)
 hist(own_theta12, prob = T, add = T, col = rgb(1,0,0,0.5), nclass = 40)
 
 acf(authors_runs[[1]]$theta[100:5000,1])
-acf(single_gibbs_runs[[1]]$theta_history[[1]][100:5000,1])
+acf(single_gibbs_runs[[1]]$theta_history[[1]][100:10000,1])

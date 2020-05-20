@@ -57,10 +57,6 @@ precomp$proposal_sd = sqrt(0.5)
 precomp$concentration <- 10000
 
 
-
-
-
-# single_gibbs_run <- single_gibbs(nmcmc = nmcmc, V = V, fieldfrequencies = fieldfrequencies, hyper = hyper, precomp = precomp, verbose = verbose)
 single_gibbs <- function(nmcmc, V, fieldfrequencies, hyper, precomp, verbose = TRUE){
   n <- dim(V)[1]
   p <- dim(V)[2]
@@ -87,8 +83,8 @@ single_gibbs <- function(nmcmc, V, fieldfrequencies, hyper, precomp, verbose = T
   for (imcmc in 1:nmcmc){
     if (verbose && (imcmc %% 1 == 0)) cat("iteration", imcmc, "/", nmcmc, 'ksize = ', state$partition$ksize, 'N = ', state$N,  "\n")
     
-    update_eta_result <- couplingdeduplication:::update_eta_cpp(state$eta-1, state$partition, partition_ll, state$theta, state$logtheta, V-1, 
-                                                                state$alpha, state$N, 0.1)
+    update_eta_result <- couplingdeduplication:::update_eta(state$eta-1, state$partition, partition_ll, state$theta, state$logtheta, V-1, 
+                                                            state$alpha, state$N, 0.1)
     state$eta <- update_eta_result$eta + 1
     partition_ll <- update_eta_result$clusterloglikelihoods
     state$partition <- update_eta_result$clustering
@@ -129,14 +125,6 @@ single_gibbs <- function(nmcmc, V, fieldfrequencies, hyper, precomp, verbose = T
       }
       theta_history[[field]][imcmc, ] <- state$theta[[field]]
     }
-    # update_theta_result <- update_theta(state$theta, state$partition, partition_ll, state$alpha, precomp$concentration)
-    # state$theta <- update_theta_result$theta
-    # state$logtheta <- lapply(state$theta, function(x) log(x))
-    # for (field in 1:p){
-    #   theta_history[[field]][imcmc, ] <- state$theta[[field]]
-    # }
-    # partition_ll <- update_theta_result$partition_ll
-    #
     ## update of N
     ## truncate N to N_max
     log_N_weights <- rep(-Inf, precomp$N_max)
@@ -159,15 +147,17 @@ verbose <- TRUE
 nmcmc <- 1e4
 ##
 # single_gibbs_run <- single_gibbs(nmcmc = nmcmc, V = V, fieldfrequencies = fieldfrequencies, hyper = hyper, precomp = precomp, verbose = verbose)
-# plot(single_gibbs_run$ksize_history, type = 'l')
-# plot(single_gibbs_run$N_history, type = 'l')
+# plot(single_gibbs_run$ksize_history[50:nmcmc], type = 'l')
+# plot(single_gibbs_run$N_history[50:nmcmc], type = 'l')
 # matplot(single_gibbs_run$theta_history[[1]][,1:3], type = 'l')
 
 single_gibbs_runs <- foreach(irep = 1:6) %dorng% {
   single_gibbs(nmcmc = nmcmc, V = V, fieldfrequencies = fieldfrequencies, hyper = hyper, precomp = precomp, verbose = verbose)
 }
+
+
 # 
-filename_ <- tempfile(pattern = "single_gibbs", tmpdir = "~/discussion_unified_framework", fileext = ".RData")
+filename_ <- tempfile(pattern = "single_gibbs_update_eta_N_theta", tmpdir = "~/discussion_unified_framework", fileext = ".RData")
 save(single_gibbs_runs, nmcmc, n, p, V, fieldfrequencies, hyper, precomp, file = filename_)
 
 # par(mfrow = c(1,1))

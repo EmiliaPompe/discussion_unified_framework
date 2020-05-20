@@ -20,13 +20,13 @@ List init_clustering_cpp(const IntegerVector & eta) {
   IntegerMatrix clmembers(n,n);
   std::fill(clmembers.begin(), clmembers.end(), -1);
   // compute clsize and ksize 
-  for (int indiv = 0; indiv < n ; indiv++){
-    int eta_indiv = eta[indiv];
-    if (clsize[eta_indiv] == 0){ 
+  for (int ieta = 0; ieta < n ; ieta++){
+    int label = eta[ieta];
+    if (clsize[label] == 0){ 
       ksize += 1;
     }
-    clmembers(eta_indiv, clsize[eta_indiv]) = indiv;
-    clsize[eta_indiv] += 1;
+    clmembers(label, clsize[label]) = ieta;
+    clsize[label] += 1;
   }
   return List::create(Named("clsize") = clsize, Named("ksize") = ksize, Named("clmembers") = clmembers);
 }

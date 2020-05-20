@@ -13,15 +13,23 @@ compute_loglikelihood_all_clusters_one_field_cpp <- function(l, clustering, thet
     .Call('_couplingdeduplication_compute_loglikelihood_all_clusters_one_field_cpp', PACKAGE = 'couplingdeduplication', l, clustering, theta_l, logtheta_l, V, alpha)
 }
 
-coupled_update_eta_cpp <- function(eta1, eta2, clustering1, clustering2, previous_clusterloglikelihoods1, previous_clusterloglikelihoods2, theta1, theta2, logtheta1, logtheta2, V, alpha1, alpha2, N1, N2, updateprobability) {
-    .Call('_couplingdeduplication_coupled_update_eta_cpp', PACKAGE = 'couplingdeduplication', eta1, eta2, clustering1, clustering2, previous_clusterloglikelihoods1, previous_clusterloglikelihoods2, theta1, theta2, logtheta1, logtheta2, V, alpha1, alpha2, N1, N2, updateprobability)
+coupled_update_eta <- function(eta1, eta2, clustering1, clustering2, previous_clusterloglikelihoods1, previous_clusterloglikelihoods2, theta1, theta2, logtheta1, logtheta2, V, alpha1, alpha2, N1, N2, updateprobability) {
+    .Call('_couplingdeduplication_coupled_update_eta', PACKAGE = 'couplingdeduplication', eta1, eta2, clustering1, clustering2, previous_clusterloglikelihoods1, previous_clusterloglikelihoods2, theta1, theta2, logtheta1, logtheta2, V, alpha1, alpha2, N1, N2, updateprobability)
 }
 
 init_clustering_cpp <- function(eta) {
     .Call('_couplingdeduplication_init_clustering_cpp', PACKAGE = 'couplingdeduplication', eta)
 }
 
-update_eta_cpp <- function(eta, clustering, previous_clusterloglikelihoods, theta, logtheta, V, alpha, N, updateprobability) {
-    .Call('_couplingdeduplication_update_eta_cpp', PACKAGE = 'couplingdeduplication', eta, clustering, previous_clusterloglikelihoods, theta, logtheta, V, alpha, N, updateprobability)
+multinomial_ <- function(logw, uniform) {
+    .Call('_couplingdeduplication_multinomial_', PACKAGE = 'couplingdeduplication', logw, uniform)
+}
+
+coupled_multinomial_ <- function(logw1, logw2, uniform1, uniform2) {
+    .Call('_couplingdeduplication_coupled_multinomial_', PACKAGE = 'couplingdeduplication', logw1, logw2, uniform1, uniform2)
+}
+
+update_eta <- function(eta, clustering, previous_clusterloglikelihoods, theta, logtheta, V, alpha, N, updateprobability) {
+    .Call('_couplingdeduplication_update_eta', PACKAGE = 'couplingdeduplication', eta, clustering, previous_clusterloglikelihoods, theta, logtheta, V, alpha, N, updateprobability)
 }
 

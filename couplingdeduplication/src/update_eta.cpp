@@ -2,6 +2,7 @@
 #include "ll_cluster_field.h"
 #include "compute_loglikelihood.h"
 #include "cluster_manipulations.h"
+#include "multinomial.h"
 using namespace Rcpp;
 using namespace std;
 
@@ -17,15 +18,15 @@ using namespace std;
 // * alpha, corruption probabilities for each field and cluster
 // * N
 // [[Rcpp::export]]
-List update_eta_cpp(IntegerVector & eta,
-                    List & clustering,
-                    const NumericMatrix previous_clusterloglikelihoods,
-                    const List & theta,
-                    const List & logtheta,
-                    const IntegerMatrix & V,
-                    const NumericMatrix & alpha,
-                    int N, double updateprobability) {
-  IntegerVector clsize = clustering["clsize"];
+List update_eta(IntegerVector & eta,
+                List & clustering,
+                const NumericMatrix previous_clusterloglikelihoods,
+                const List & theta,
+                const List & logtheta,
+                const IntegerMatrix & V,
+                const NumericMatrix & alpha,
+                int N, double updateprobability) {
+  IntegerVector clsize    = clustering["clsize"];
   IntegerMatrix clmembers = clustering["clmembers"];
   IntegerVector ksize_vec = clustering["ksize"];
   int ksize = ksize_vec(0);
@@ -49,14 +50,9 @@ List update_eta_cpp(IntegerVector & eta,
       int label = eta[ieta];
       // first, remove eta[ieta] from current partition
       remove_label_from_partition(ieta, label,
-                                  ksize,
-                                  clmembers,
-                                  clsize,
+                                  ksize, clmembers, clsize,
                                   clusterloglikelihoods,
-                                  theta,
-                                  logtheta,
-                                  V,
-                                  alpha);
+                                  theta, logtheta, V, alpha);
       // now we have a clustering and associated log likelihoods as if we did not have eta[ieta] in the partition
       // next we can compute the likelihood associated with a new block with that label in it
       for (int field = 0; field < p; field++){
@@ -103,25 +99,10 @@ List update_eta_cpp(IntegerVector & eta,
         }
       }
       // sample from categorical/multinomial given logproba_eta
-      double maxlogproba_eta = Rcpp::max(logproba_eta);
-      logproba_eta = exp(logproba_eta - maxlogproba_eta);
-      int draw = 0;
-      NumericVector cumsumw = cumsum(logproba_eta);
       GetRNGstate();
-      uniform = runif(1);
+      NumericVector u = runif(1);
       PutRNGstate();
-      double u = uniform(0) * cumsumw(n-1);
-      int running_index = 0;
-      double sumw = cumsumw(running_index);
-      if (u <= sumw){
-        draw = running_index;
-      } else {
-        while (u > sumw){
-          sumw = cumsumw(running_index);
-          running_index ++;
-        }
-        draw = running_index-1;
-      }
+      int draw = multinomial_(logproba_eta, u(0));
       // thus we update eta, and the clustering, and associated loglikelihoods appropriately
       eta[ieta] = draw;
       // update cluster log likelihoods
