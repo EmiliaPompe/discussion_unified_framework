@@ -2,6 +2,7 @@
 
 export(alpha_to_beta)
 export(beta_to_alpha)
+export(coupled_gibbs)
 export(coupled_update_N)
 export(coupled_update_eta_relabel)
 export(get_RLdata500)

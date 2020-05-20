@@ -1,4 +1,4 @@
-## This script aims at simply running the Gibbs sampler
+## This script aims at simply running the Gibbs sampler and seeing if it works
 ## this is work in progress
 rm(list = ls())
 set.seed(1)

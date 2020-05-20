@@ -1,3 +1,9 @@
+## Script to compare results produced by this package 
+## to the results obtained with the authors' code
+
+## Requires having run other scripts before; this script just does some plots
+## and calculations to make sure the samplers mostly agree
+
 rm(list = ls())
 set.seed(1)
 library(couplingdeduplication)

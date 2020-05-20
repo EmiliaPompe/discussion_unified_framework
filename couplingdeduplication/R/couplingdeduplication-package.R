@@ -5,7 +5,7 @@
 #'@author ... 
 #'@description package to reproduce experiments in Tancredi, Steorts, Liseo BA discussion paper 2020
 #' "A Unified Framework for De-Duplication and Population Size Estimation"
-#' and to implement coupling of main Gibbs sampler
+#' and to implement coupling of main Gibbs sampler... URL https://github.com/EmiliaPompe/discussion_unified_framework
 #'@details ...
 #'@keywords package
 #'@useDynLib couplingdeduplication

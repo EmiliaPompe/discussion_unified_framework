@@ -1,3 +1,4 @@
+## Script to try the multinomial sampler and the coupling of it 
 ## this is work in progress
 rm(list = ls())
 set.seed(2)

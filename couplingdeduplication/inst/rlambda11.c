@@ -1,3 +1,5 @@
+// code provided by the authors
+
 #include <stdlib.h>
 #include <math.h>
 #include <R.h>

@@ -1,8 +1,10 @@
-## Initialization of the chains
-## n the number of rows in the data
-## fieldfrequencies frequencies of appearance of each element in each field (list of vectors)
-## hyper a list of hyperparameters including m0, s0, s
-## m0 is the mean of beta0, s0 its standard deviation, s is the std dev of beta_diff
+#'@title rinit
+#'@description  initialization of the chains...
+#'@param n the number of rows in the data
+#'@param fieldfrequencies frequencies of appearance of each element in each field (list of vectors), 
+#'such as provided by \code{\link{get_RLdata500}}
+#'@param hyper a list of hyperparameters including m0, s0, s
+#' where m0 is the mean of beta0, s0 its standard deviation, s is the std dev of beta_diff
 #'@export
 rinit <- function(n, fieldfrequencies, hyper, V){
   ## The state of the Markov chain  is (eta, N, beta_0, beta_diff, theta)

@@ -1,4 +1,9 @@
+## this script essentially runs the authors' code and saves the output
+## at the moment it's messy, with hardcoded paths and so on
+## requires 'rlambda11.c' to be in the working directory
+## set up by the following line
 setwd("~/discussion_unified_framework/couplingdeduplication/inst/")
+
 ##################DATA PREPARATION############################
 library(RecordLinkage)
 data(RLdata500)
@@ -74,7 +79,6 @@ g=1.02
 sigma=c(0.5, 0.1, 0.01)
 
 
-
 library(doParallel)
 library(doRNG)
 registerDoParallel(cores = detectCores()-2)
@@ -95,92 +99,8 @@ authors_runs[[1]]
 # plot(authors_runs[[1]]$theta[,1])
 ###################################################################################################################
 # filename_ <- tempfile(pattern = "authorcode", tmpdir = "~/discussion_unified_framework", fileext = ".RData")
-filename_ <- "~/discussion_unified_framework/authorcode_lambda_N.RData"
+# filename_ <- "~/discussion_unified_framework/authorcode_lambda_N.RData"
 # filename_ <- "~/discussion_unified_framework/authorcode_lambda_theta_N.RData"
-save(authors_runs, file = filename_)
-cat("results saved in", filename_, "\n")
+# save(authors_runs, file = filename_)
+# cat("results saved in", filename_, "\n")
 
-# 
-# ###################### FIGURE 2 PRODUCTION #######################################################################
-# burnin=5000
-# NZ=out1$NZ[-(1:burnin)]
-# Npop=out1$Npop[-(1:burnin)]
-# 
-# 
-# ####generazione a priori su k########
-# rzeta=function(a){
-# b=2^{a-1}
-# cond=TRUE
-# while(cond){
-# u=runif(1)
-# v=runif(1)
-# x=floor(u^(-1/(a-1)))
-# if (x==Inf) x=.Machine$double.xmax
-# t=(1+1/x)^(a-1)
-# cond=(v*x*(t-1)/(b-1)>t/b)}
-# return(x)}
-# 
-# 
-# 
-# NN2=c()
-# for(i in 1:100000) NN2[i]=rzeta(1.02)
-# 
-# k2=c()
-# for(i in 1:100000) {
-#      if (NN2[i]>.Machine$integer) k2[i]=length(unique(sample(.Machine$integer,size=500,rep=T)))
-#      else k2[i]=length(unique(sample(NN2[i],size=500,rep=T)))}
-# 
-# 
-# 
-# 
-# par(mfrow=c(2,2))
-# #posteriori di k
-# p.post=table(NZ)/length(NZ)
-# x.post=as.numeric(names(table(NZ)))
-# plot(x.post,p.post,xlim=c(410,495),xlab="k",type="b",lwd=1,cex.lab=2,main="",ylab="")
-# p.prior=table(k2)/length(k2)
-# x.prior=as.numeric(names(table(k2)))
-# lines(x.prior,p.prior,col=2,lwd=2)
-# 
-# #posteriori di N
-# p.post=table(Npop)/length(Npop)
-# x.post=as.numeric(names(table(Npop)))
-# hist(Npop,xlim=c(500,3500),xlab="N",cex.lab=2,main="",prob=TRUE,ylab="",col="orange")
-# 
-# 
-# 
-# #posteriori dei FNR E FDR
-# post.rates=function(out,MATCH){
-# 
-# PAR=out$PAR
-# LAMBDA=out$LAMBDA
-# 
-# 
-# UM=matrix(ncol=2,nrow=nrow(LAMBDA))
-# for ( j in 1:nrow(LAMBDA)){
-# print(j)
-# C=outer(LAMBDA[j,], LAMBDA[j,], FUN="==")
-# C=C[upper.tri(C)]
-# 
-# 
-# U=length(unique(LAMBDA[j,]))
-# T=sum(C)
-# 
-# CL=sum(MATCH==1 & C==1) #correct link
-# FN=sum(MATCH==1 & C==0) #false negative
-# FP=sum(MATCH==0 & C==1) #false positive
-# CNL=sum(MATCH==0 & C==0) #correct non link
-# 
-# FNR=FN/(CL+FN) # quanti dei veri link non vengono individuati?
-# FDR=FP/(CL+FP) # quanti dei link individuati non sono corretti?
-# 
-# UM[j,]=c(FNR,FDR)}
-# return(UM)}
-# 
-# UM=post.rates(out=out1,MATCH=MATCH)[-(1:burnin),]
-# UM[,2]=round(UM[,2],2)
-# 
-# barplot(table(UM[,1])/sum(table(UM[,1])),xlab="FNR",cex.lab=2,cex.axis=2,cex.names=2,col="purple")
-# barplot(table(UM[,2])/sum(table(UM[,2])),xlab="FDR",cex.lab=2,cex.axis=2,cex.names=2,col="purple")
-# 
-# plot(out1$Npop)

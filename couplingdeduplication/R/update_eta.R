@@ -1,4 +1,11 @@
-## update eta given the rest, and perform "relabeling"
+#'@title update_eta_relabel
+#'@description update eta given the rest, and perform "relabeling" of the partition
+#' given the other components of the chain. Update each eta with some probability as indicated by 
+#' 'eta_update_prob' in 'algotuning'
+#'@param state a list representing the state of the Markov chain as e.g. generate by \code{\link{rinit}}
+#'@param V a matrix representing the data
+#'@param algotuning a list containing 'eta_update_prob'
+#'@return state of the Markov chain with new eta and partition
 #'@export
 update_eta_relabel <- function(state, V, algotuning){
   ## update eta using C++ function
@@ -20,6 +27,8 @@ update_eta_relabel <- function(state, V, algotuning){
 }
 
 
+#'@title coupled_update_eta_relabel
+#'@description performs max coupling of eta update as described in \code{\link{update_eta_relabel}}
 #'@export
 coupled_update_eta_relabel <- function(state1, state2, V, algotuning){
   ## draw new etas

@@ -1,3 +1,11 @@
+#'@title update_N
+#'@description takes a state of the Markov chain and draws a new N.
+#' The procedure truncates the distribution to 'N_max', computes the probabilities, and uses the 'sample.int' function of R
+#'@param state a list representing the state of the Markov chain as e.g. generate by \code{\link{rinit}}
+#'@param V a matrix representing the data
+#'@param hyper a list containing hyperparameter 'g'
+#'@param algotuning a list containing pre-computed quantities 'N_max', 'lfactorials', 'lns'
+#'@return state of the Markov chain with updated 'N'
 #'@export
 update_N <- function(state, V, hyper, algotuning){
   ## using truncation to N_max
@@ -12,6 +20,10 @@ update_N <- function(state, V, hyper, algotuning){
   return(state)
 }
 
+#'@title coupled_update_N
+#'@description samples from a maximal coupling of the conditional distributions of N given the other variables,
+#' for the two chains given as 'state1' and 'state2'; see \code{\link{update_N}} for the other parameters.
+#'@return a list with 'state1' and 'state2', the two new states of the Markov chains
 #'@export
 coupled_update_N <- function(state1, state2, V, hyper, algotuning){
   ## using truncation to N_max

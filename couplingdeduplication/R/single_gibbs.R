@@ -1,3 +1,6 @@
+#'@title single_gibbs
+#'@description runs a Gibbs sampler with updates of eta, N, and optionally of theta
+#'@return a list with  'ksize_history', 'N_history' and 'theta_history'
 #'@export
 single_gibbs <- function(nmcmc, V, fieldfrequencies, hyper, algotuning, update.theta = FALSE){
   ## dimension of the data

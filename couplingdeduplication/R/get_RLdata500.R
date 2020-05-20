@@ -1,3 +1,11 @@
+#'@title  get_RLdata500
+#'@description  loads the RecordLinkage and the 'RLdata500' data set
+#' which contains 500 rows and 14 fields
+#' The data is the matrix V, the vector 'Mvec'
+#' contains the number of possible categories for each of the 14 fields
+#' and 'fieldfrequencies' is a list where each of the 14 elements
+#' is a vector of frequencies of occurrence of these different possible categories. 
+#'@return a list with 'V', 'Mvec', and 'fieldfrequencies'
 #'@export
 get_RLdata500 <- function(){
   library(RecordLinkage)
