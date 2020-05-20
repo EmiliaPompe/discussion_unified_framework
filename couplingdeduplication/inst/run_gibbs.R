@@ -52,7 +52,7 @@ algotuning$eta_update_prob <- 0.1
 algotuning$verbose <- TRUE
 
 ## number of MCMC iterations
-nmcmc <- 1e3
+nmcmc <- 2e4
 print("update of eta and N")
 gibbs_runs <- foreach(irep = 1:5) %dorng% {
   single_gibbs(nmcmc = nmcmc, V = V, fieldfrequencies = fieldfrequencies, hyper = hyper, algotuning = algotuning, update.theta = FALSE)
@@ -61,7 +61,6 @@ save(gibbs_runs, nmcmc, n, p, V, fieldfrequencies, hyper, algotuning, file = "gi
 
 
 print("update of eta, theta and N")
-print("update of eta and N")
 gibbs_runs <- foreach(irep = 1:5) %dorng% {
   single_gibbs(nmcmc = nmcmc, V = V, fieldfrequencies = fieldfrequencies, hyper = hyper, algotuning = algotuning, update.theta = TRUE)
 }

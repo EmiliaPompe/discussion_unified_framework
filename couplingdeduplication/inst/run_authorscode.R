@@ -70,7 +70,7 @@ rlambda=function(N,lambda=(myRLDATA$id-min(myRLDATA$id)),V,nMCMC,par.up=c(1,1,1,
 
 
 ##############################RUNNING THE MCMC#####################################################
-nMCMC=2e3
+nMCMC=2e4
 N1=2500
 g=1.02
 sigma=c(0.5, 0.1, 0.01)
