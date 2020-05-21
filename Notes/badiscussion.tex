@@ -1,0 +1,143 @@
+\RequirePackage{etoolbox}
+\csdef{input@path}{%
+ {sty/}% cls, sty files
+ {img/}% eps files
+}%
+\csgdef{bibdir}{bib/}% bst, bib files
+
+\documentclass[ba]{imsart}
+%
+\pubyear{0000}
+\volume{00}
+\issue{0}
+\doi{0000}
+\firstpage{1}
+\lastpage{1}
+
+
+%
+\usepackage{amsthm}
+\usepackage{amsmath}
+\usepackage{natbib}
+\usepackage[colorlinks,citecolor=blue,urlcolor=blue,filecolor=blue,backref=page]{hyperref}
+\usepackage{graphicx}
+\usepackage[utf8]{inputenc}
+\usepackage{enumerate}
+\usepackage{verbatim}
+\usepackage{booktabs}
+\usepackage[ruled,vlined]{algorithm2e}
+\usepackage{algpseudocode}
+\usepackage{color}
+\usepackage{dsfont}
+\usepackage{float}
+
+\startlocaldefs
+% ** Local definitions **
+\endlocaldefs
+
+
+
+\begin{document}
+
+%\maketitle
+%\title{}
+\date{April 2020}
+
+\begin{frontmatter}
+\title{Discussion of ``Unified Framework for De-Duplication and Population Size Estimation'' by Tancredi et al.}
+
+%\title{\thanksref{T1}}
+%\thankstext{T1}{<thanks text>}
+\runtitle{}
+
+\begin{aug}
+\author{\fnms{Nianqiao}~\snm{Ju}\thanksref{addr1,t1} \ead[label=e1]{nju@g.harvard.edu}},
+\author{\fnms{Niloy}~\snm{Biswas}\thanksref{addr1}},
+\author{\fnms{Pierre E.}~\snm{Jacob} \thanksref{addr1}},
+\author{\fnms{Gonzalo}~\snm{Mena} \thanksref{addr1,addr2}},
+\author{\fnms{John}~\snm{O'Leary}\thanksref{addr1}}
+\and
+\author{\fnms{Emilia}~\snm{Pompe}\thanksref{addr3}}
+%\author{\fnms{<firstname>} \snm{<surname>}\thanksref{}\ead[label=e1]{}}
+%\and
+%\author{\fnms{} \snm{}}
+\runauthor{Ju et al.}
+
+\address[addr1]{Department of Statistics, Harvard University 
+}
+
+\address[addr2]{Harvard Data Science Initiative}
+
+\address[addr3]{Department of Statistics, University of Oxford}
+\thankstext{t1}{\printead{e1}}
+%\thankstext{<id>}{<text>}
+\end{aug}
+
+
+%% ** Keywords **
+%\begin{keyword}%[class=MSC]
+%\kwd{}
+%\kwd[]{}
+%\end{keyword}
+\end{frontmatter}
+
+We congratulate the authors on their important contribution to the record linkage literature, performing data de-duplication in the presence of population size uncertainty.
+The authors' method involves a mix of discrete parameters, such as a latent population size $N$ and an unobserved partition over $\{1,\ldots,n\}$, and continuous ones like the vectors $\beta_0$, $\beta'$ and $\theta$.
+Estimating this model entails significant computational challenges, resembling those associated with mixture models and Bayesian non-parametric methods. These arise as much in the design of a sampling algorithm as in the assessment of its convergence.
+
+We would like to highlight a few tools that can be used to build confidence in MCMC results under such conditions. Many of these involve Markov Chain couplings,
+as in \citet{valen_johnson_1996,johnson1998coupling},
+and more recently in \citet{glynn2014exact,Nikooienejad2016,jacob2017unbiased,biswas2019estimating}.
+These methods allow for the assessment and removal
+of the impact of the starting distribution. They apply when
+it is possible to run multiple chains that evolve  
+marginally according to the proposed algorithm and jointly so that they meet after a random number of iterations. 
+
+In the following, we describe how to generate chains
+${X_t^{(1)}=(\eta^{(1)},  \beta_0^{(1)}
+\beta'^{(1)}, \theta^{(1)},N^{(1)})}$ and 
+$X_t^{(2)}=(\eta^{(2)},  \beta_0^{(2)},
+\beta'^{(2)},\theta^{(2)},N^{(2)})$ which follow the Gibbs sampler of Section 5 of this article and which meet exactly at a random time.
+A basic strategy for coupling Gibbs methods involves coupling each conditional update. The full conditional distribution of label indicators $\eta$ is a Multinomial distribution on $\{1,\ldots,n\}$ with the vector of probabilities computed as in (5.5) of the article.
+To couple these updates, we compute such probabilities for both chains
+and implement a maximal coupling to obtain two labels which will be identical with the maximal probability.
+For the continuous variables $\beta_0$, $\beta'$ and $\theta$,
+which are updated with Metropolis--Hasting steps,
+we can employ maximal couplings of the Normal or Dirichlet proposal distributions, and use common Uniform draws to accept
+or reject them.
+Finally we can update $N$ with an exact Gibbs step, truncating $N$ to a very large integer, and implement a maximal coupling of this step.
+
+
+However, an interesting difficulty
+arises, reminiscent of the infamous label switching
+issue \citep{stephens2000dealing}. Suppose that a first chain
+has $\eta^{(1)} = (1,4,3,4,2)$ and the second $\eta^{(2)} = (4,3,2,3,1)$,
+in a simple example with $n=5$.
+These labels correspond to the same partition, 
+and yet the $\eta$-components of the chains
+are different and thus the chains cannot coincide.
+Judging from our toy experiments, the associated meeting time
+would be long.
+This can be alleviated by an 
+additional relabeling step, to be performed
+after the update of the components of $\eta$.
+A simple strategy, for example, is to relabel $\eta$ according to the order of the occurrences of new blocks, from component $1$ to $n$.
+That is, both the labels $\eta^{(1)} = (1,4,3,4,2)$ 
+and $\eta^{(2)} = (4,3,2,3,1)$  would
+be relabelled $(1,2,3,2,4)$. 
+This relabeling needs to be accompanied
+by an adequate reshuffling of the associated
+parameters, namely the $\beta'$-components in the notation of Section 5.
+Other, more sophisticated relabeling strategies could
+be devised, perhaps inspired by 
+the literature on label-switching issues
+in mixture models \citep{stephens2000dealing,marin2005bayesian,fruhwirth2011label}.
+
+We will make some R scripts implementing a coupling of the proposed Gibbs sampler available at
+\url{https://github.com/EmiliaPompe/discussion_unified_framework},
+along with some simple numerical experiments on the synthetic dataset \texttt{RLdata500} from the \texttt{R} package \texttt{RecordLinkage} analysed in Section 6 of the paper.
+
+
+\bibliographystyle{ba}
+\bibliography{references_discussion}
+\end{document}
