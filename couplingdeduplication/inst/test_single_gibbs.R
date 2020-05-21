@@ -44,20 +44,23 @@ algotuning <- list()
 algotuning$N_max <- N_max
 algotuning$lfactorials <- lfactorials
 algotuning$lns <- lns
+algotuning$fieldfrequencies <- fieldfrequencies
 algotuning$proposal_sd = sqrt(0.5)
-algotuning$theta_update_conc <- 10000
+algotuning$theta_update_rwconcentration <- 10000
+algotuning$theta_update_rw <- 0.5
 algotuning$eta_update_prob <- 0.1
 algotuning$verbose <- TRUE
-
 ## number of MCMC iterations
 nmcmc <- 1e2
 ## single run
 single_gibbs_run <- single_gibbs(nmcmc = nmcmc, V = V, fieldfrequencies = fieldfrequencies,
-                                 hyper = hyper, algotuning = algotuning, update.theta = FALSE)
+                                 hyper = hyper, algotuning = algotuning, update.theta = TRUE)
 ##
 plot(single_gibbs_run$ksize_history[10:nmcmc], type = 'l')
 plot(single_gibbs_run$N_history[10:nmcmc], type = 'l')
-# matplot(single_gibbs_run$theta_history[[1]][,1:3], type = 'l')
+matplot(single_gibbs_run$theta_history[[1]][,1:3], type = 'l')
+
+
 
 ## multiple runs, in parallel
 # library(doParallel)

@@ -48,8 +48,10 @@ algotuning <- list()
 algotuning$N_max <- N_max
 algotuning$lfactorials <- lfactorials
 algotuning$lns <- lns
+algotuning$fieldfrequencies <- fieldfrequencies
 algotuning$proposal_sd = sqrt(0.5)
-algotuning$theta_update_conc <- 10000
+algotuning$theta_update_rwconcentration <- 10000
+algotuning$theta_update_rw <- 0.5
 algotuning$eta_update_prob <- 0.1
 algotuning$verbose <- TRUE
 

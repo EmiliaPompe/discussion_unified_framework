@@ -10,7 +10,7 @@
 #'@param lag time lag, equal to one by default
 #'@param max_iterations maximum number of iterations, at which to interrup the while loop; Inf by default
 #'@export
-coupled_gibbs <- function(V, fieldfrequencies, hyper, algotuning, m = 1, lag = 1, max_iterations = Inf){
+coupled_gibbs <- function(V, fieldfrequencies, hyper, algotuning, update.theta = FALSE, m = 1, lag = 1, max_iterations = Inf){
   starttime <- Sys.time()
   ## dimension of the data
   ## number of rows
@@ -41,6 +41,9 @@ coupled_gibbs <- function(V, fieldfrequencies, hyper, algotuning, m = 1, lag = 1
     ## update N given rest
     state1 <- update_N(state1, V, hyper, algotuning)
     ##
+    if (update.theta){
+      state1 <- update_theta(state1, V, algotuning)
+    }
     N_history1[time+1] <- state1$N
     # ksize_history1[time+1] <- state1$partition$ksize
   }
@@ -61,6 +64,9 @@ coupled_gibbs <- function(V, fieldfrequencies, hyper, algotuning, m = 1, lag = 1
     if (is.finite(meetingtime)){
       state1 <- update_eta_relabel(state1, V, algotuning)
       state1 <- update_N(state1, V, hyper, algotuning)
+      if (update.theta){
+        state1 <- update_theta(state1, V, algotuning)
+      }
       state2 <- state1
     } else {
       coupled_update_eta_relabel_results <- coupled_update_eta_relabel(state1, state2, V, algotuning)
@@ -74,7 +80,13 @@ coupled_gibbs <- function(V, fieldfrequencies, hyper, algotuning, m = 1, lag = 1
       state1 <- results_$state1
       state2 <- results_$state2
       N_equal <- all(state1$N == state2$N)
-      if (is.infinite(meetingtime) && N_equal && eta_equal){
+      ## update of theta
+      if (update.theta){
+        results_ <- coupled_update_theta(state1, state2, V, algotuning)
+        state1 <- results_$state1
+        state2 <- results_$state2
+      }
+      if (is.infinite(meetingtime) && N_equal && eta_equal && ){
         meetingtime <- time
         if (algotuning$verbose){ cat("!! meeting at time", time, "\n") }
       }
