@@ -2,6 +2,9 @@
 using namespace Rcpp;
 using namespace std;
 
+
+// function to 'remove' some label 'eta_j' from the existing partition
+// updating clmembers, clsize, ksize, and clusterloglikelihoods appropriately.
 void remove_label_from_partition(int ieta, int label,
                                  int & ksize,
                                  IntegerMatrix & clmembers,
@@ -13,6 +16,7 @@ void remove_label_from_partition(int ieta, int label,
                                  const NumericMatrix & alpha){
   int n = V.nrow();
   int p = V.ncol();
+  // remove index 'ieta' from the cluster it was in, indicated by 'label'
   // i.e. translate -1's towards the left
   bool shift = false;
   for (int icol = 0; icol < clsize[label]; icol++){
@@ -28,6 +32,7 @@ void remove_label_from_partition(int ieta, int label,
       }
     } 
   }
+  // decrease size of cluster where 'eta' was
   clsize[label] --;
   // if cluster is now empty
   if (clsize[label] == 0){
@@ -36,7 +41,7 @@ void remove_label_from_partition(int ieta, int label,
     // erase log-likelihoods associated with that cluster
     std::fill(clusterloglikelihoods.row(label).begin(), clusterloglikelihoods.row(label).end(), NA_REAL);
   } else {
-    // recompute likelihood of cluster from scratch
+    // recompute likelihood of that cluster from scratch
     for (int field = 0; field < p; field ++){
       clusterloglikelihoods(label,field) = ll_cluster_field(clsize[label],
                             clmembers(label,_), theta[field], logtheta[field], V(_,field), alpha(label,field));
@@ -44,6 +49,11 @@ void remove_label_from_partition(int ieta, int label,
   }
 }
 
+// function to compute probabilities of joining each cluster 
+// for some 'eta_j' where j is 'ieta'
+// puts the log probabilities in 'logproba_eta'
+// also computes 'uponetajoining_loglikelihood' the values that
+// 'clusterloglikelihoods' would take upon 'eta_j' joining any of the cluster
 void compute_proba_eta(NumericMatrix & uponetajoining_loglikelihood, 
                         NumericVector & logproba_eta, 
                         NumericVector & newblock_loglikelihood, NumericVector & theta_field, NumericVector & logtheta_field, 

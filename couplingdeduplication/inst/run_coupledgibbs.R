@@ -57,11 +57,11 @@ algotuning$verbose <- TRUE
 lag <- 50
 nrep <- 500
 ### uncomment following code to obtain some meeting times
-coupled_gibbs_runs <- foreach(irep = 1:nrep) %dorng% {
-  algotuning$verbose <- FALSE
-  coupled_gibbs(V, fieldfrequencies, hyper, algotuning, m = 1, lag = lag, max_iterations = 1e4)
-}
-save(lag, nrep, coupled_gibbs_runs, file = "coupledgibbs_update_eta_N.RData")
+# coupled_gibbs_runs <- foreach(irep = 1:nrep) %dorng% {
+#   algotuning$verbose <- FALSE
+#   coupled_gibbs(V, fieldfrequencies, hyper, algotuning, m = 1, lag = lag, max_iterations = 1e4)
+# }
+# save(lag, nrep, coupled_gibbs_runs, file = "coupledgibbs_update_eta_N.RData")
 ## load results
 load(file = "coupledgibbs_update_eta_N.RData")
 ## obtain meeting times
@@ -84,3 +84,5 @@ g_tvbounds <- g_tvbounds + geom_ribbon(data=data.frame(x = xgrid,
                                                        y = densitygrid/max(densitygrid)),
                                        aes(x= x, ymin = ymin, ymax = y, y=NULL), alpha = .3) + geom_line()
 print(g_tvbounds)
+
+# ggsave(filename = "tvupperbounds.pdf", plot = g_tvbounds, width = 8, height = 4)

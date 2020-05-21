@@ -34,8 +34,6 @@ round(table(authors_ksize) / length(authors_ksize),3)
 # 
 own_ksize <- unlist(lapply(gibbs_runs, function(x) x$ksize_history[100:g_nmcmc]))
 round(table(own_ksize) / length(own_ksize), 3)
-hist(authors_ksize, prob = T)
-hist(own_ksize, prob = T, add = T, col = rgb(1,0,0,0.5))
 
 ## N 
 matplot(lapply(gibbs_runs, function(x) x$N_history[g_mcmc_subset]) %>% bind_cols(), type = 'l', ylim = c(1500,4e3))
@@ -44,8 +42,23 @@ matplot(lapply(authors_runs, function(x) x$Npop[a_mcmc_subset]) %>% bind_cols(),
 ## comparison of the number N
 authors_N <- unlist(lapply(authors_runs, function(x) x$Npop[100:a_nmcmc]))
 own_N <- unlist(lapply(gibbs_runs, function(x) x$N_history[100:g_nmcmc]))
-hist(authors_N, prob = T, nclass = 30)
-hist(own_N, prob = T, add = T, col = rgb(1,0,0,0.5), nclass = 30)
+
+## figure to show similarity between code outputs
+ksizedf <- rbind(data.frame(ksize = authors_ksize, implementation = "authors'"),
+      data.frame(ksize = own_ksize, implementation = "own's"))
+gksize <- ggplot(ksizedf, aes(x = ksize, fill = implementation)) + geom_histogram(aes(y=..density..), position = position_dodge()) +
+  xlab("# non-empty clusters") + theme(legend.position = "bottom") + scale_fill_manual(values = c("black", "orange"))
+gksize
+# ggsave(filename = "hist_ksize_agreement.pdf", plot = gksize, width = 4, height = 4)
+
+Ndf <- rbind(data.frame(N = authors_N, implementation = "authors'"),
+                 data.frame(N = own_N, implementation = "own's"))
+gN <- ggplot(Ndf, aes(x = N, fill = implementation)) + geom_histogram(aes(y=..density..), position = position_dodge()) +
+  xlab("N") + theme(legend.position = "bottom") + scale_fill_manual(values = c("black", "orange"))
+gN
+# ggsave(filename = "hist_N_agreement.pdf", plot = gN, width = 4, height = 4)
+
+
 
 
 ## update only of N, theta and eta
