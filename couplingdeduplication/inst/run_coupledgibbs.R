@@ -52,20 +52,23 @@ algotuning$fieldfrequencies <- fieldfrequencies
 algotuning$proposal_sd = sqrt(0.5)
 algotuning$theta_update_rwconcentration <- 10000
 algotuning$theta_update_rw <- 0.5
+algotuning$theta_update_indepscale <- 0.8
 algotuning$eta_update_prob <- 0.1
 algotuning$verbose <- TRUE
 
 
 lag <- 50
-nrep <- 500
+nrep <- 50
 ### uncomment following code to obtain some meeting times
-# coupled_gibbs_runs <- foreach(irep = 1:nrep) %dorng% {
-#   algotuning$verbose <- FALSE
-#   coupled_gibbs(V, fieldfrequencies, hyper, algotuning, m = 1, lag = lag, max_iterations = 1e4)
-# }
+coupled_gibbs_runs <- foreach(irep = 1:nrep) %dorng% {
+  algotuning$verbose <- FALSE
+  coupled_gibbs(V, fieldfrequencies, hyper, algotuning, m = 1, update.theta = TRUE, lag = lag, max_iterations = 1e4)
+}
+save(lag, nrep, coupled_gibbs_runs, file = "coupledgibbs_update_eta_theta_N.RData")
 # save(lag, nrep, coupled_gibbs_runs, file = "coupledgibbs_update_eta_N.RData")
 ## load results
-load(file = "coupledgibbs_update_eta_N.RData")
+# load(file = "coupledgibbs_update_eta_N.RData")
+load(file = "coupledgibbs_update_eta_theta_N.RData")
 ## obtain meeting times
 meeting_times <- sapply(coupled_gibbs_runs, function(x) x$meetingtime)
 ## obtain TV upper bounds

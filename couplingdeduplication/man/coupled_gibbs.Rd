@@ -9,6 +9,7 @@ coupled_gibbs(
   fieldfrequencies,
   hyper,
   algotuning,
+  update.theta = FALSE,
   m = 1,
   lag = 1,
   max_iterations = Inf

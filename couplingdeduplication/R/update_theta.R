@@ -4,6 +4,7 @@
 #'@return a state with updated 'theta' and updated loglikelihood
 #'@export
 update_theta <- function(state, V, algotuning){
+  n <- dim(V)[1]
   p <- dim(V)[2]
   ## 
   u_ <- runif(1)
@@ -32,7 +33,7 @@ update_theta <- function(state, V, algotuning){
   } else {
     ## independent proposal
     for (field in 1:p){
-      alpha_proposal <- algotuning$fieldfrequencies[[field]] * state$partition$ksize * 0.9 + 1
+      alpha_proposal <- algotuning$fieldfrequencies[[field]] * n * algotuning$theta_update_indepscale + 1
       ## sample from Dirichlet distribution 
       x_propose <- gtools::rdirichlet(1, alpha = alpha_proposal)
       logx_propose <- log(x_propose)
@@ -61,6 +62,7 @@ update_theta <- function(state, V, algotuning){
 #'@return a list with 'state1' and 'state2' 
 #'@export
 coupled_update_theta <- function(state1, state2, V, algotuning){
+  n <- dim(V)[1]
   p <- dim(V)[2]
   ## common random number to decide what type of update to perform
   u_ <- runif(1)
@@ -104,7 +106,7 @@ coupled_update_theta <- function(state1, state2, V, algotuning){
   } else {
     ## independent proposal
     for (field in 1:p){
-      alpha_proposal <- algotuning$fieldfrequencies[[field]] * min(state1$partition$ksize, state2$partition$ksize) * 0.9 + 1
+      alpha_proposal <- algotuning$fieldfrequencies[[field]] * n * algotuning$theta_update_indepscale + 1
       ## sample from Dirichlet distribution 
       x_propose <- gtools::rdirichlet(1, alpha = alpha_proposal)
       logx_propose <- log(x_propose)
@@ -122,17 +124,17 @@ coupled_update_theta <- function(state1, state2, V, algotuning){
       laccept1 <- lratio1 + sum(cl_log_lik_new1[which(state1$partition$clsize != 0)]) - sum(cl_log_lik1[which(state1$partition$clsize != 0)])
       laccept2 <- lratio2 + sum(cl_log_lik_new2[which(state2$partition$clsize != 0)]) - sum(cl_log_lik2[which(state2$partition$clsize != 0)])
       uacceptindep <- runif(1)
-      if (log(ruacceptindep) < laccept1){
+      if (log(uacceptindep) < laccept1){
         state1$theta[[field]] <- x_propose
         state1$logtheta[[field]] <- log(x_propose)
         state1$partition_ll[,field] <- cl_log_lik_new1
       }
-      if (log(ruacceptindep) < laccept2){
+      if (log(uacceptindep) < laccept2){
         state2$theta[[field]] <- x_propose
         state2$logtheta[[field]] <- log(x_propose)
         state2$partition_ll[,field] <- cl_log_lik_new2
       }
-      all_theta_equal <- all_theta_equal && (log(ruacceptindep) < laccept1) && (log(ruacceptindep) < laccept2)
+      all_theta_equal <- all_theta_equal && (log(uacceptindep) < laccept1) && (log(uacceptindep) < laccept2)
     }
   }
   return(list(state1 = state1, state2 = state2, identical = all_theta_equal))
