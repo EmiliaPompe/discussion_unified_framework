@@ -1,0 +1,40 @@
+\begin{thebibliography}{5}
+\providecommand{\natexlab}[1]{#1}
+\providecommand{\url}[1]{\texttt{#1}}
+\expandafter\ifx\csname urlstyle\endcsname\relax
+  \providecommand{\doi}[1]{doi: #1}\else
+  \providecommand{\doi}{doi: \begingroup \urlstyle{rm}\Url}\fi
+
+\bibitem[Tancredi et~al.(2018)Tancredi, Steorts, and
+  Liseo]{tancredi2018unified}
+Andrea Tancredi, Rebecca Steorts, and Brunero Liseo.
+\newblock {A Unified Framework for De-Duplication and Population Size
+  Estimation}.
+\newblock \emph{Bayesian Analysis}, 2018.
+
+\bibitem[Biswas et~al.(2019)Biswas, Jacob, and Vanetti]{biswas2019estimating}
+Niloy Biswas, Pierre~E Jacob, and Paul Vanetti.
+\newblock {Estimating convergence of Markov chains with L-lag couplings}.
+\newblock In \emph{Advances in Neural Information Processing Systems}, pages
+  7389--7399, 2019.
+
+\bibitem[Jacob et~al.(2020)Jacob, O'Leary, and Atchad{\'e}]{jacob2017unbiased}
+Pierre~E Jacob, John O'Leary, and Yves~F Atchad{\'e}.
+\newblock Unbiased \uppercase{M}arkov chain \uppercase{M}onte \uppercase{C}arlo
+  with couplings.
+\newblock \emph{Journal of the Royal Statistical Society: Series B (Statistical
+  Methodology) (with discussion) (to appear)}, 2020.
+
+\bibitem[Johnson(1998)]{johnson1998coupling}
+Valen~E Johnson.
+\newblock {A coupling-regeneration scheme for diagnosing convergence in Markov
+  chain Monte Carlo algorithms}.
+\newblock \emph{Journal of the American Statistical Association}, 93\penalty0
+  (441):\penalty0 238--248, 1998.
+
+\bibitem[Bou-Rabee et~al.(2018)Bou-Rabee, Eberle, and Zimmer]{bou2018coupling}
+Nawaf Bou-Rabee, Andreas Eberle, and Raphael Zimmer.
+\newblock {Coupling and convergence for Hamiltonian Monte Carlo}.
+\newblock \emph{arXiv preprint arXiv:1805.00452}, 2018.
+
+\end{thebibliography}
