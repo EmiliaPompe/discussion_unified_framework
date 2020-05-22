@@ -10,6 +10,7 @@ single_gibbs(
   fieldfrequencies,
   hyper,
   algotuning,
+  update.beta = FALSE,
   update.theta = FALSE
 )
 }

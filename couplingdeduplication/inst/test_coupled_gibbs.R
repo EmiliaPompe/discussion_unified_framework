@@ -72,7 +72,7 @@ algotuning$verbose <- TRUE
 ## number of MCMC iterations
 lag <- 1
 #
-coupled_gibbs_run <- coupled_gibbs(V, fieldfrequencies, hyper, algotuning, update.theta = TRUE, m = 50, lag = lag, max_iterations = 1e3)
+coupled_gibbs_run <- coupled_gibbs(V, fieldfrequencies, hyper, algotuning, update.theta = FALSE, m = 50, lag = lag, max_iterations = 1e3)
 niter <- length(coupled_gibbs_run$ksize_history1)
 print(coupled_gibbs_run$meetingtime)
 #
@@ -85,10 +85,10 @@ plot(0:(niter-1), coupled_gibbs_run$N_history1, type = 'l', ylim = c(1000, 4000)
 lines(lag:(niter-1), coupled_gibbs_run$N_history2, col = 'red')
 abline(v = coupled_gibbs_run$meetingtime)
 
-matplot(1:(niter-1), cbind(coupled_gibbs_run$theta_history1[[1]][2:(niter),1], coupled_gibbs_run$theta_history2[[1]][1:(niter-1),1]), type = 'l')
-matplot(1:(niter-1), cbind(coupled_gibbs_run$theta_history1[[1]][2:(niter),2], coupled_gibbs_run$theta_history2[[1]][1:(niter-1),2]), type = 'l')
-matplot(1:(niter-1), abs(coupled_gibbs_run$theta_history1[[1]][2:(niter),] - coupled_gibbs_run$theta_history2[[1]][1:(niter-1),]), type = 'l', col = 'black')
-abline(v = coupled_gibbs_run$meetingtime)
+# matplot(1:(niter-1), cbind(coupled_gibbs_run$theta_history1[[1]][2:(niter),1], coupled_gibbs_run$theta_history2[[1]][1:(niter-1),1]), type = 'l')
+# matplot(1:(niter-1), cbind(coupled_gibbs_run$theta_history1[[1]][2:(niter),2], coupled_gibbs_run$theta_history2[[1]][1:(niter-1),2]), type = 'l')
+# matplot(1:(niter-1), abs(coupled_gibbs_run$theta_history1[[1]][2:(niter),] - coupled_gibbs_run$theta_history2[[1]][1:(niter-1),]), type = 'l', col = 'black')
+# abline(v = coupled_gibbs_run$meetingtime)
 
 # ##
 # 

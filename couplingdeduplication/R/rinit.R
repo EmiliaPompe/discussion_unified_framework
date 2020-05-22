@@ -34,7 +34,7 @@ rinit <- function(n, fieldfrequencies, hyper, V){
   ## over-write alpha, beta_0 and beta_diff 
   alpha <- matrix(0.01, nrow = n, ncol = p)
   ## recall beta = logit(alpha) = log(alpha/(1-alpha))
-  beta_0 <- rep(log(0.01/0.99), nrow = p)
+  beta_0 <- rep(log(0.01/0.99), p)
   beta_diff <- matrix(0., nrow = n, ncol = p)
   ## compute log-likelihood associated with each cluster
   partition_ll <- 

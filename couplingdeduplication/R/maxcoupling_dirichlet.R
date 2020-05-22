@@ -15,3 +15,4 @@ maxcoupling_dirichlet <- function(alpha1, alpha2){
     return(list(xy = cbind(x, y), identical = FALSE))
   }
 }
+
