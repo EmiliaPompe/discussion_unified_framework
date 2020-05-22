@@ -58,7 +58,7 @@ algotuning$verbose <- TRUE
 
 
 lag <- 50
-nrep <- 50
+nrep <- 500
 ### uncomment following code to obtain some meeting times
 coupled_gibbs_runs <- foreach(irep = 1:nrep) %dorng% {
   algotuning$verbose <- FALSE
