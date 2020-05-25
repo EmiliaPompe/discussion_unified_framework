@@ -1,6 +1,4 @@
-## *[A Unified Framework for De-Duplication and Population Size Estimation](https://projecteuclid.org/euclid.ba/1551949260)*: a discussion.
- 
- #### by [Nianqiao Ju](https://phylliswithdata.com/about/), Niloy Biswas, [Pierre E. Jacob](https://sites.google.com/site/pierrejacob/), [Gonzalo Mena](http://gomena.github.io), John O’Leary and [Emilia Pompe](https://www.stats.ox.ac.uk/~pompe/).
+## *[A Unified Framework for De-Duplication and Population Size Estimation](https://projecteuclid.org/euclid.ba/1551949260)*: a discussion by [Nianqiao Ju](https://phylliswithdata.com/about/), Niloy Biswas, [Pierre E. Jacob](https://sites.google.com/site/pierrejacob/), [Gonzalo Mena](http://gomena.github.io), John O’Leary and [Emilia Pompe](https://www.stats.ox.ac.uk/~pompe/).
 
 
 This repository contains documentation and code for the discussion paper [Unified Framework for De-Duplication and Population Size Estimation](https://projecteuclid.org/euclid.ba/1551949260), authored by **Andrea Tancredi**, **Rebecca Steorts**  and **Brunero Liseo**,  to appear at **Bayesian Analysis**. It is organized at follows
