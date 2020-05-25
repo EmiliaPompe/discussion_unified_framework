@@ -1,12 +1,13 @@
 Package: couplingdeduplication
 Type: Package
-Title: What the package does (short line)
+Title: couplingdeduplication
 Version: 1.0
 Date: 2020-05-18
-Author: Who wrote it
-Maintainer: Who to complain to <yourfault@somewhere.net>
-Description: More about what it does (maybe more than one line)
-License: What license is it under?
+Author: Phyllis Ju, Niloy Biswas Pierre E Jacob, Gonzalo Mena, John O'Leary, Emilia Pompe 
+Maintainer: Pierre E Jacob <pjacob@fas.harvard.edu>
+Description: package to reproduce experiments in Tancredi, Steorts, Liseo BA discussion paper 2020;  "A Unified Framework for De-Duplication and Population Size Estimation" and to implement coupling of main Gibbs sampler... URL https://github.com/EmiliaPompe/discussion_unified_framework
+Encoding: UTF-8
+License: GPL (>= 2)
 Imports: Rcpp (>= 1.0.4.6)
 LinkingTo: Rcpp, RcppEigen
 RoxygenNote: 7.1.0
