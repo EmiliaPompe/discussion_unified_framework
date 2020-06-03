@@ -1,4 +1,6 @@
 ## This script aims at running this package's implementation of the Gibbs sampler 
+## it does so for fixed theta, fixed beta, and then for fixed beta
+## (the update of beta is not implemented yet)
 rm(list = ls())
 set.seed(1)
 library(couplingdeduplication)
@@ -55,13 +57,12 @@ algotuning$eta_update_prob <- 0.1
 algotuning$verbose <- TRUE
 
 ## number of MCMC iterations
-nmcmc <- 2e4
+nmcmc <- 2e2
 print("update of eta and N")
 gibbs_runs <- foreach(irep = 1:5) %dorng% {
   single_gibbs(nmcmc = nmcmc, V = V, fieldfrequencies = fieldfrequencies, hyper = hyper, algotuning = algotuning, update.theta = FALSE)
 }
 save(gibbs_runs, nmcmc, n, p, V, fieldfrequencies, hyper, algotuning, file = "gibbs_update_eta_N.RData")
-
 
 print("update of eta, theta and N")
 gibbs_runs <- foreach(irep = 1:5) %dorng% {

@@ -1,5 +1,9 @@
-## This script aims at experimenting with coupled Gibbs samplers 
-## this is work in progress
+## This script runs coupled Gibbs samplers 
+## without the re-labeling step
+## so the chains struggle to ever meet
+## Some commented parts of the script run coupled chains for 1e3 iterations
+## and monitor whether they have yet met
+
 rm(list = ls())
 set.seed(1)
 library(couplingdeduplication)

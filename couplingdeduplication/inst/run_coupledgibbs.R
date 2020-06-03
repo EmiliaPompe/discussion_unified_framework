@@ -1,5 +1,7 @@
 ## This script aims at experimenting with coupled Gibbs samplers 
-## this is work in progress
+## it generates the file 'tvupperbounds.pdf' which shows
+## estimated upper bounds on the total variation distance between the Markov chain 
+## at step 't' and its invariant distribution
 rm(list = ls())
 set.seed(1)
 library(couplingdeduplication)

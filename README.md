@@ -12,6 +12,21 @@ in which we state the possibility of using recently developed methodology [2,3],
 ### Code
 Code reproducing our experiments and presented in the format of a `R` package is contained in the [`couplingdeduplication`](https://github.com/EmiliaPompe/discussion_unified_framework/tree/master/couplingdeduplication) directory. These pertain the synthetic dataset `RLdata500` from the `R` package `RecordLinkage` analysed in Section 6 of [[1]](https://projecteuclid.org/euclid.ba/1551949260).
 
+Some explanations:
+
+- inst/run_authorscode.R: runs the authors', either keeping both theta and beta fixed, or just beta, and saves the output 
+
+- inst/run_gibbs.R: runs this implementation, either keeping both theta and beta fixed, or just beta, and saves the output 
+
+- inst/compare_gibbs.R: creates plots to check the similarity of results between this implementation and the authors', provided
+one has executed 'run_gibbs.R' and 'run_authorscode.R' already
+
+- inst/run_coupledgibbs.R: runs pairs of Markov chains until they meet, in order to obtain meeting times and TV upper bounds
+
+- inst/run_coupledgibbs_norelabel.R: runs pairs of Markov chains until they meet, without the relabeling step...
+to see that indeed the relabeling step is useful.
+
+
 ### References
 [1]Andrea Tancredi, Rebecca Steorts, and Brunero Liseo. [A Unified Framework for De-Duplication and Population Size Estimation Bayesian Analylsis, advance publication](https://projecteuclid.org/euclid.ba/1551949260), 2020.
 
